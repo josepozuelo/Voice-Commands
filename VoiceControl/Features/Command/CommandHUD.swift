@@ -110,9 +110,16 @@ struct CommandHUD: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text("Listening for commands...")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                if !commandManager.recognizedText.isEmpty {
+                    Text("\"\(commandManager.recognizedText)\"")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text("Listening for commands...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
@@ -253,6 +260,13 @@ struct CommandHUD: View {
                 Text("Error")
                     .font(.headline)
                     .foregroundColor(.primary)
+                
+                if !commandManager.recognizedText.isEmpty {
+                    Text("Heard: \"\(commandManager.recognizedText)\"")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
                 
                 Text(error.localizedDescription)
                     .font(.subheadline)

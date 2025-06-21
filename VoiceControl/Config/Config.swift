@@ -37,20 +37,19 @@ struct Config {
     
     // Continuous Mode Configuration
     static let continuousMode = true  // Toggle for continuous mode
-    static let silenceRMSThreshold: Float = 0.01  // Audio level threshold for silence (legacy)
-    static let speechDetectionThreshold: Float = 0.02  // Audio level threshold to detect speech (legacy)
-    static let silenceDuration: TimeInterval = 0.8  // Duration of silence to trigger processing (legacy)
     static let minAudioChunkDuration: TimeInterval = 0.5  // Minimum audio chunk size
     static let maxAudioChunkDuration: TimeInterval = 10.0  // Maximum before forced processing
     
-    // Dynamic Silence Detection Configuration
-    static let dynamicDetectionEnabled = true  // Enable adaptive silence detection
-    static let speechMultiplier: Float = 2.0  // Multiplier for adaptive speech threshold
-    static let silenceMultiplier: Float = 1.3  // Multiplier for adaptive silence threshold
-    static let calibrationDuration: TimeInterval = 0.5  // Time to calibrate noise floor
-    static let minSpeechDuration: TimeInterval = 0.1  // Minimum speech duration
-    static let confirmationSamples = 3  // Number of samples to confirm speech
-    static let adaptiveSilenceDuration: TimeInterval = 0.5  // Silence duration for adaptive mode
+    
+    // WebRTC VAD Configuration  
+    static let vadEnabled = true  // Always use WebRTC Voice Activity Detection
+    static let vadMode: Int32 = 3  // VAD aggressiveness (0-3, 3 = very aggressive)
+    static let vadFrameDuration: TimeInterval = 0.02  // 20ms frames
+    static let vadSampleRate: Int = 16000  // VAD requires 16kHz
+    static let vadFrameSamples: Int = 320  // 320 samples per 20ms frame at 16kHz
+    static let vadSpeechFrameThreshold = 3  // Consecutive speech frames to start speech
+    static let vadSilenceTimeout: TimeInterval = 1.2  // 1200ms silence to end speech (increased for better separation)
+    static let vadMinSpeechDuration: TimeInterval = 0.2  // Minimum speech duration to process
     
     // Disambiguation Configuration
     static let disambiguationTimeout: TimeInterval = 8.0  // Time before dismissing disambiguation
