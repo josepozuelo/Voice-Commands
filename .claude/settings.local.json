@@ -8,7 +8,11 @@
       "Bash(swift build)",
       "Bash(grep:*)",
       "Bash(xcodebuild:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(pkill:*)",
+      "Bash(cp:*)",
+      "Bash(tccutil reset:*)",
+      "Bash(codesign:*)"
     ],
     "deny": []
   }
