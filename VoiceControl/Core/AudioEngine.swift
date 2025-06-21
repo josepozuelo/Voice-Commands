@@ -25,16 +25,14 @@ class AudioEngine: NSObject, ObservableObject {
     // VAD silence detection
     private var vadDetector = VADSilenceDetector()
     
-    // Pre-trigger buffer to capture audio before speech is detected
-    private var preTriggerBuffer = CircularBuffer<Data>(capacity: 50)  // ~1 second of audio at 20ms frames
+    // Remove pre-trigger buffer - we'll continuously record everything
     
     // For debugging
     private var lastThresholdLogTime = Date()
     private let thresholdLogInterval: TimeInterval = 2.0
     
-    // Chunk separation timing
-    private var lastChunkSentTime: Date?
-    private let minimumChunkGap: TimeInterval = 0.5  // 500ms minimum gap between chunks for better separation
+    // Track if we have any audio accumulated
+    private var hasAccumulatedAudio = false
     
     override init() {
         super.init()
@@ -92,8 +90,8 @@ class AudioEngine: NSObject, ObservableObject {
         // Clear all buffers before starting
         audioBuffer.removeAll()
         currentChunkBuffer.removeAll()
-        preTriggerBuffer.clear()
         isContinuousMode = true
+        hasAccumulatedAudio = false
         
         // Reset VAD detector to ensure clean state
         vadDetector.reset()
@@ -178,65 +176,29 @@ class AudioEngine: NSObject, ObservableObject {
         let convertedData = convertToTargetSampleRate(buffer)
         
         if isContinuousMode {
-            let previousState = vadDetector.state
+            // Always accumulate audio while in continuous mode
+            currentChunkBuffer.append(convertedData)
             
             // Process with VAD detector
             let result = vadDetector.processAudioData(convertedData)
             
-            // Handle state transitions and audio accumulation
-            switch (previousState, vadDetector.state) {
-            case (.idle, .speechDetected):
-                // Speech just started - add pre-trigger buffer to capture the beginning
-                print("DEBUG: Speech started, adding pre-trigger buffer")
-                for audioData in preTriggerBuffer.allElements() {
-                    currentChunkBuffer.append(audioData)
-                }
-                currentChunkBuffer.append(convertedData)
-                
-            case (.speechDetected, _), (.trailingSilence, _):
-                // Continue accumulating during speech and trailing silence
-                currentChunkBuffer.append(convertedData)
-                
-            case (.idle, .idle):
-                // While idle, keep audio in pre-trigger buffer
-                preTriggerBuffer.append(convertedData)
-                
-            default:
-                // Other transitions
-                currentChunkBuffer.append(convertedData)
+            // Track if we're accumulating speech
+            if vadDetector.state == .speechDetected || vadDetector.state == .trailingSilence {
+                hasAccumulatedAudio = true
             }
             
             // Log VAD state periodically for debugging
             if Date().timeIntervalSince(lastThresholdLogTime) >= thresholdLogInterval {
-                print("VAD state: \(vadDetector.state), RMS: \(rms)")
+                print("VAD state: \(vadDetector.state), RMS: \(rms), Buffer size: \(currentChunkBuffer.count)")
                 lastThresholdLogTime = Date()
             }
             
-            if result == .chunkReady {
-                // Check if enough time has passed since last chunk
-                let now = Date()
-                if let lastSent = lastChunkSentTime {
-                    let timeSinceLastChunk = now.timeIntervalSince(lastSent)
-                    if timeSinceLastChunk < minimumChunkGap {
-                        print("DEBUG: Skipping chunk - too soon after last chunk (\(timeSinceLastChunk)s)")
-                        return
-                    }
-                }
-                
-                // Send the chunk
-                if !currentChunkBuffer.isEmpty {
-                    print("DEBUG: Sending audio chunk of size: \(currentChunkBuffer.count) bytes")
-                    audioChunkPublisher.send(currentChunkBuffer)
-                    currentChunkBuffer.removeAll()
-                    preTriggerBuffer.clear()  // Clear pre-trigger buffer after sending chunk
-                    lastChunkSentTime = now
-                    
-                    // Add a small delay before processing new audio to ensure clean separation
-                    // This helps prevent residual audio from being included in the next chunk
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                        // Buffer is already cleared, just a timing guard
-                    }
-                }
+            // Only send chunk when VAD indicates complete speech segment
+            if result == .chunkReady && hasAccumulatedAudio && !currentChunkBuffer.isEmpty {
+                print("DEBUG: Sending complete audio chunk of size: \(currentChunkBuffer.count) bytes")
+                audioChunkPublisher.send(currentChunkBuffer)
+                currentChunkBuffer.removeAll()
+                hasAccumulatedAudio = false
             }
         } else {
             // Normal recording mode
