@@ -37,11 +37,20 @@ struct Config {
     
     // Continuous Mode Configuration
     static let continuousMode = true  // Toggle for continuous mode
-    static let silenceRMSThreshold: Float = 0.01  // Audio level threshold for silence
-    static let speechDetectionThreshold: Float = 0.02  // Audio level threshold to detect speech
-    static let silenceDuration: TimeInterval = 0.8  // Duration of silence to trigger processing
+    static let silenceRMSThreshold: Float = 0.01  // Audio level threshold for silence (legacy)
+    static let speechDetectionThreshold: Float = 0.02  // Audio level threshold to detect speech (legacy)
+    static let silenceDuration: TimeInterval = 0.8  // Duration of silence to trigger processing (legacy)
     static let minAudioChunkDuration: TimeInterval = 0.5  // Minimum audio chunk size
     static let maxAudioChunkDuration: TimeInterval = 10.0  // Maximum before forced processing
+    
+    // Dynamic Silence Detection Configuration
+    static let dynamicDetectionEnabled = true  // Enable adaptive silence detection
+    static let speechMultiplier: Float = 2.0  // Multiplier for adaptive speech threshold
+    static let silenceMultiplier: Float = 1.3  // Multiplier for adaptive silence threshold
+    static let calibrationDuration: TimeInterval = 0.5  // Time to calibrate noise floor
+    static let minSpeechDuration: TimeInterval = 0.1  // Minimum speech duration
+    static let confirmationSamples = 3  // Number of samples to confirm speech
+    static let adaptiveSilenceDuration: TimeInterval = 0.5  // Silence duration for adaptive mode
     
     // Disambiguation Configuration
     static let disambiguationTimeout: TimeInterval = 8.0  // Time before dismissing disambiguation

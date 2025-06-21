@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 VoiceControl is a macOS voice command app built with SwiftUI that enables hands-free text manipulation. It uses OpenAI's Whisper API for speech recognition and macOS Accessibility APIs for text control. Features continuous voice command mode with automatic silence detection and voice-based disambiguation.
 
+**Bundle Identifier**: com.yourteam.VoiceControl  
+**Minimum Requirements**: macOS 13.0+, Xcode 15.0+, Swift 5.0
+
 ## Workflow
 - First think through the problem, read the codebase for relevant files and ask any questions or do any research you might need.
 - You will then plan out the feature or task at hand, if the feature needs some high-level definition and design, you can create a spec in the spec folder, so that I can review and work through it with you. If the feature is well defined or straightforward you can skip to the next step.
@@ -72,6 +75,7 @@ The app requires these macOS permissions:
 - **Resources/commands.json**: Command definitions with phrases and actions
 - **Utils/HotkeyManager.swift**: Global hotkey registration and detection
 - **Utils/TextSelection.swift**: Text selection utilities and boundary detection
+- **Utils/CircularBuffer.swift**: Audio buffer implementation for continuous capture
 
 ### Command System
 

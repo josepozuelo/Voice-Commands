@@ -1,136 +1,73 @@
 # Dynamic Silence Detection Implementation
 
 ## Overview
-Implement adaptive silence/speech detection using relative noise deltas to fix false triggers and missed commands.
+Replace fixed RMS thresholds with adaptive silence/speech detection using relative noise deltas to fix false triggers and missed commands.
 
-## Phase 1: Core Infrastructure ⏳
+## Phase 1: Core Data Structures ✅
 
-- [ ] Create `AdaptiveNoiseTracker` struct in AudioEngine.swift
-  - [ ] Implement circular buffer for RMS history (10 second window)
-  - [ ] Add short-term average calculation (1 second)
-  - [ ] Add long-term average calculation (10 seconds)
-  - [ ] Add standard deviation calculation
+- [x] Create `CircularBuffer` generic class for efficient RMS history
+  - [x] Implement append, suffix, and iteration methods
+  - [x] Add capacity management
 
-- [ ] Create `DynamicSilenceDetector` class
-  - [ ] Define DetectionState enum (calibrating, waitingForSpeech, detectingSpeech, trailingSilence)
-  - [ ] Implement state machine logic
-  - [ ] Add confirmation sample counting
+- [x] Create `AdaptiveNoiseTracker` struct in AudioEngine.swift
+  - [x] Implement RMS history buffer (10 second window at 16Hz = 160 samples)
+  - [x] Add short-term average calculation (last 16 samples ~1 second)
+  - [x] Add long-term average calculation (all samples)
+  - [x] Add standard deviation calculation
+  - [x] Add noise floor tracking (5th percentile)
 
-## Phase 2: Adaptive Threshold Calculation ⏳
+- [x] Create `DynamicSilenceDetector` class
+  - [x] Define DetectionState enum (calibrating, waitingForSpeech, detectingSpeech, trailingSilence)
+  - [x] Define DetectionResult enum (continue, chunkReady)
+  - [x] Add state machine properties
+  - [x] Add confirmation sample counting
 
-- [ ] Implement dynamic threshold methods
-  - [ ] Speech threshold: max(baseline + 2σ, baseline × 2.0)
-  - [ ] Silence threshold: baseline + 0.5σ
-  - [ ] Add min/max bounds for safety
+## Phase 2: Adaptive Algorithm Implementation ✅
 
-- [ ] Add exponentially weighted moving average (EWMA)
-  - [ ] Implement smooth adaptation algorithm
-  - [ ] Add noise floor tracking (5th percentile)
+- [x] Implement noise statistics update method
+  - [x] Calculate EWMA for smooth baseline tracking
+  - [x] Update standard deviation with each sample
+  - [x] Track min/max values for bounds
 
-## Phase 3: Integration with AudioEngine ⏳
+- [x] Implement dynamic threshold calculation
+  - [x] Speech threshold: max(baseline + 2σ, baseline × 2.0)
+  - [x] Silence threshold: baseline + 0.5σ  
+  - [x] Apply min/max bounds (0.01 - 0.5)
 
-- [ ] Replace fixed threshold logic with dynamic detector
-  - [ ] Update `processAudioBuffer()` to use dynamic detection
-  - [ ] Maintain backward compatibility with config flag
-  - [ ] Add logging for threshold values
+- [x] Implement state machine in `process(rms:timestamp:)` method
+  - [x] Handle calibration period (500ms)
+  - [x] Implement speech detection with confirmation samples
+  - [x] Handle silence detection and chunk boundaries
+  - [x] Add minimum speech duration check (100ms)
 
-- [ ] Update chunk detection logic
-  - [ ] Implement minimum speech duration check (100ms)
-  - [ ] Reduce silence duration to 500ms (from 800ms)
-  - [ ] Add consecutive sample confirmation
+## Phase 3: AudioEngine Integration ✅
 
-## Phase 4: Configuration & Testing ⏳
+- [x] Add adaptive detection properties to AudioEngine
+  - [x] Initialize DynamicSilenceDetector instance
+  - [x] Add current threshold tracking for debugging
 
-- [ ] Add configuration parameters to Config.swift
-  - [ ] Dynamic detection enable/disable flag
-  - [ ] Multiplier parameters
-  - [ ] Timing parameters
-  - [ ] Confirmation sample count
+- [x] Replace fixed threshold logic in `processAudioBuffer()`
+  - [x] Call dynamic detector's process method
+  - [x] Handle DetectionResult cases
+  - [x] Keep existing chunk accumulation logic
 
-- [ ] Create test scenarios
-  - [ ] Quiet room baseline test
-  - [ ] Background noise adaptation test
-  - [ ] Sudden noise spike handling
-  - [ ] Continuous speech with pauses
+- [x] Update timing configuration
+  - [x] Reduce silence duration to 500ms (from 800ms)
+  - [x] Add calibration duration (500ms)
+  - [x] Keep max chunk duration at 10s
 
-## Phase 5: UI Integration (Optional) ⏳
+## Phase 4: Configuration Updates ✅
 
-- [ ] Add visual feedback for noise levels
-  - [ ] Show current baseline in HUD
-  - [ ] Display speech/silence thresholds
-  - [ ] Real-time RMS meter
+- [x] Add dynamic detection parameters to Config.swift
+  - [x] Speech multiplier (default: 2.0)
+  - [x] Silence multiplier (default: 1.3)
+  - [x] Calibration duration (500ms)
+  - [x] Minimum speech duration (100ms)
+  - [x] Confirmation samples (3)
 
-- [ ] Add calibration UI
-  - [ ] Manual baseline reset option
-  - [ ] Environment preset selection
-  - [ ] Threshold adjustment controls
-
-## Implementation Notes
-
-### Key Code Addition to AudioEngine.swift:
-
-```swift
-// Add to AudioEngine class
-private var adaptiveDetection = AdaptiveDetection()
-
-private struct AdaptiveDetection {
-    var isEnabled = true  // Feature flag
-    var noiseTracker = AdaptiveNoiseTracker()
-    var detector = DynamicSilenceDetector()
-    
-    // Statistics
-    var currentBaseline: Float = 0.0
-    var speechThreshold: Float = 0.0
-    var silenceThreshold: Float = 0.0
-}
-
-// Update processAudioBuffer
-private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-    let rms = calculateRMS(buffer: buffer)
-    
-    if adaptiveDetection.isEnabled {
-        // New dynamic detection
-        let result = adaptiveDetection.detector.process(rms: rms, timestamp: Date())
-        
-        // Log thresholds for debugging
-        if frameCount % 160 == 0 {  // Log every 10 seconds
-            logger.debug("Baseline: \(adaptiveDetection.currentBaseline), Speech: \(adaptiveDetection.speechThreshold)")
-        }
-        
-        switch result {
-        case .chunkReady:
-            processSilenceDetected()
-        case .continue:
-            appendToCurrentChunk(buffer)
-        }
-    } else {
-        // Fallback to original fixed thresholds
-        // ... existing code ...
-    }
-}
-```
-
-### Testing Checklist:
-
-1. **Quiet Environment**
-   - [ ] Whisper detection works
-   - [ ] No false triggers from ambient noise
-   - [ ] Baseline stabilizes quickly
-
-2. **Noisy Environment**
-   - [ ] Normal speech detected over background noise
-   - [ ] TV/music doesn't trigger false commands
-   - [ ] Adapts to gradual noise changes
-
-3. **Edge Cases**
-   - [ ] Sudden loud noises don't break detection
-   - [ ] Long pauses in speech handled correctly
-   - [ ] Very short utterances detected
-
-4. **Performance**
-   - [ ] No increased CPU usage
-   - [ ] Memory usage stays constant
-   - [ ] No audio processing delays
+- [x] Add debugging configuration
+  - [x] Threshold logging frequency
+  - [x] Enable/disable console output
 
 ## Success Criteria
 

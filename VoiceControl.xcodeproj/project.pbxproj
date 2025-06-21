@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1000001000000000000001 /* VoiceControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001000000000000001 /* VoiceControlApp.swift */; };
+		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
 		A1000002000000000000002 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002000000000000002 /* Config.swift */; };
 		A1000003000000000000003 /* AccessibilityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003000000000000003 /* AccessibilityBridge.swift */; };
 		A1000004000000000000004 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004000000000000004 /* AudioEngine.swift */; };
@@ -23,6 +24,7 @@
 
 /* Begin PBXFileReference section */
 		A2000001000000000000001 /* VoiceControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControlApp.swift; sourceTree = "<group>"; };
+		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
 		A2000002000000000000002 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		A2000003000000000000003 /* AccessibilityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityBridge.swift; sourceTree = "<group>"; };
 		A2000004000000000000004 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
@@ -131,7 +133,7 @@
 			children = (
 				A2000010000000000000010 /* HotkeyManager.swift */,
 				A2000011000000000000011 /* TextSelection.swift */,
-			);
+				F390453067AD43618C6AE6E2 /* CircularBuffer.swift */,);
 			path = Utils;
 			sourceTree = "<group>";
 		};
@@ -225,7 +227,7 @@
 				A1000009000000000000009 /* Command.swift in Sources */,
 				A1000010000000000000010 /* HotkeyManager.swift in Sources */,
 				A1000011000000000000011 /* TextSelection.swift in Sources */,
-			);
+				DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

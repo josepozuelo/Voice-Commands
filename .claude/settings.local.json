@@ -12,7 +12,9 @@
       "Bash(pkill:*)",
       "Bash(cp:*)",
       "Bash(tccutil reset:*)",
-      "Bash(codesign:*)"
+      "Bash(codesign:*)",
+      "Bash(find:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
