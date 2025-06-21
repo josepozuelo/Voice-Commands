@@ -1,12 +1,12 @@
-# Continuous Voice Command Capture - Design & Implementation Spec
+# Continuous Voice Command Capture - Design & Implementation
 
 ## Overview
 
-This document describes the current implementation of the continuous voice command capture system in VoiceControl, focusing on the workflow for creating audio chunks and executing commands continuously. It also identifies opportunities for making the flow more snappy, fluid, and error-resistant.
+This document describes the current implementation of the continuous voice command capture system in VoiceControl. The system features dynamic silence detection that adapts to ambient noise levels in real-time for accurate and responsive voice command processing.
 
-## Current Architecture
+## System Architecture
 
-### System Flow
+### High-Level Flow
 
 ```
 User Input → Audio Capture → Chunk Detection → Transcription → Command Matching → Execution
@@ -16,15 +16,15 @@ User Input → Audio Capture → Chunk Detection → Transcription → Command M
 
 ### Core Components
 
-1. **AudioEngine** - Handles microphone capture and silence detection
+1. **AudioEngine** - Handles microphone capture and dynamic silence detection
 2. **WhisperService** - Manages OpenAI Whisper API transcription
 3. **CommandManager** - Orchestrates the continuous workflow
 4. **CommandMatcher** - Performs fuzzy matching on transcribed text
 5. **CommandHUD** - Provides visual feedback and disambiguation
 
-## Audio Chunk Creation Workflow
+## Audio Processing Pipeline
 
-### 1. Audio Capture Pipeline
+### Audio Capture
 
 ```swift
 // AudioEngine.swift - Key parameters
@@ -37,238 +37,203 @@ format: PCM Float32
 1. AVAudioEngine captures raw audio in real-time
 2. Audio is buffered into `currentChunkBuffer`
 3. Each buffer is analyzed for RMS (Root Mean Square) level
-4. Speech/silence detection triggers chunk boundaries
+4. Dynamic silence detection triggers chunk boundaries
 
-### 2. Silence Detection Algorithm
+### Dynamic Silence Detection
+
+The system uses three key components for adaptive silence detection:
+
+#### 1. CircularBuffer
+- Generic data structure for efficient RMS history tracking
+- Maintains 160 samples (10 seconds at 16Hz)
+- O(1) append operations with automatic wraparound
+- Provides suffix and iteration capabilities
+
+#### 2. AdaptiveNoiseTracker
+Tracks real-time noise statistics:
+- **Long-term average**: Mean of all samples in buffer
+- **Short-term average**: Mean of last 16 samples (~1 second)
+- **Standard deviation**: Measure of noise variability
+- **Noise floor**: 5th percentile of samples
+
+#### 3. DynamicSilenceDetector
+State machine with four states:
+
+```
+┌─────────────┐
+│ Calibrating │ (500ms) → Collect baseline noise statistics
+└──────┬──────┘
+       ↓
+┌──────────────────┐
+│ WaitingForSpeech │ → Monitor for RMS > speechThreshold
+└────────┬─────────┘    (requires 3 consecutive samples)
+         ↓
+┌──────────────────┐
+│ DetectingSpeech  │ → Continue recording while RMS > silenceThreshold
+└────────┬─────────┘
+         ↓
+┌──────────────────┐
+│ TrailingSilence  │ → Wait for 500ms of silence
+└──────────────────┘    Then emit chunk if duration > 100ms
+```
+
+### Adaptive Threshold Calculation
+
+Thresholds are calculated dynamically based on noise statistics:
+
+```
+Speech Threshold = max(baseline + 2σ, baseline × 2.0)
+Silence Threshold = baseline + 0.5σ
+
+Where:
+  - baseline = long-term RMS average
+  - σ = standard deviation of RMS values
+  - Bounds: [0.01, 0.5] to prevent extreme values
+```
+
+### Configuration Parameters
 
 ```swift
-speechDetectionThreshold: 0.02 RMS
-silenceRMSThreshold: 0.01 RMS
-silenceDuration: 0.8 seconds
-maxChunkDuration: 10 seconds (safety limit)
+// From Config.swift
+calibrationDuration: 0.5 seconds      // Initial noise floor calibration
+minSpeechDuration: 0.1 seconds        // Minimum valid speech length
+silenceDuration: 0.8 seconds          // Silence required to end chunk (increased for better separation)
+confirmationSamples: 3                // Samples needed to confirm speech
+speechMultiplier: 2.0                 // Multiplier for speech threshold
+silenceMultiplier: 1.3                // Multiplier for silence threshold
+maxAudioChunkDuration: 10 seconds     // Maximum chunk length (safety)
+minimumChunkGap: 0.2 seconds          // Minimum gap between chunks to prevent overlap
 ```
 
-**Logic Flow:**
-```
-Audio Buffer → Calculate RMS → 
-  If RMS >= 0.02: Mark as speech, reset silence timer
-  If RMS < 0.01 AND speech was detected:
-    Start/continue silence timer
-    If silence >= 0.8s: Create chunk and send for processing
-```
+## Command Processing Pipeline
 
-### 3. Chunk Processing Pipeline
+### 1. Chunk Creation
+When the DynamicSilenceDetector returns `chunkReady`:
+- Minimum chunk gap (200ms) is enforced to prevent overlap
+- Current audio buffer is sent via Combine publisher
+- Buffer is cleared for next chunk
+- Detector resets to `waitingForSpeech` state
+- Timestamp is recorded for gap enforcement
 
-1. **Chunk Creation**: When silence is detected, current buffer becomes a chunk
-2. **Async Publishing**: Chunk sent via Combine publisher to CommandManager
-3. **Transcription**: WhisperService sends audio to OpenAI API
-4. **Command Matching**: Fuzzy match against commands.json (0.85 confidence threshold)
-5. **Execution/Disambiguation**: Auto-execute high confidence, show HUD for ambiguous
+### 2. Transcription
+- Audio chunk sent to WhisperService
+- Uses OpenAI Whisper API (model: whisper-1)
+- Returns transcribed text asynchronously
 
-## Current Performance Characteristics
+### 3. Command Matching
+- Fuzzy matching against commands.json
+- Confidence threshold: 0.85
+- Returns matched command(s) or disambiguation options
+
+### 4. Execution
+- High confidence matches execute automatically
+- Multiple matches show disambiguation HUD
+- Voice-enabled disambiguation ("one", "two", "three")
+
+## Performance Characteristics
 
 ### Latency Breakdown
-
 - **Audio Capture**: ~50ms buffering delay
-- **Silence Detection**: 800ms minimum wait
-- **Whisper API**: 500ms-2000ms (network + processing)
+- **Silence Detection**: 800ms-1200ms (adaptive, VAD-based)
+- **Chunk Gap**: 200ms minimum between chunks
+- **Whisper API**: 500ms-2000ms (network dependent)
 - **Command Matching**: <10ms
-- **Total**: ~1.3-2.8 seconds from speech end to execution
+- **Total**: ~1.55-3.45 seconds end-to-end
 
 ### Memory Usage
-
-- Audio buffer grows at ~32KB/second (16kHz × 2 bytes)
+- Audio buffer: ~32KB/second (16kHz × 2 bytes)
+- RMS history: 640 bytes (160 floats)
 - Maximum chunk size: ~320KB (10 seconds)
-- No explicit memory limits or cleanup
 
-## Identified Issues & Bottlenecks
+### Accuracy
+- Adapts to ambient noise in 500ms
+- Prevents false triggers in quiet environments
+- Maintains detection in noisy environments
+- Minimum speech duration prevents accidental triggers
 
-### 1. Fixed Silence Detection
-- **Issue**: Hard-coded thresholds don't adapt to environment
-- **Impact**: False triggers in noisy environments, missed commands in quiet ones
+## Operating Modes
 
-### 2. Sequential Processing
-- **Issue**: Must wait for full transcription before next chunk
-- **Impact**: Can miss fast consecutive commands
+### Single Command Mode
+- Activated by hotkey press
+- Records single command
+- Stops after execution
 
-### 3. Network Dependency
-- **Issue**: Every command requires internet round-trip
-- **Impact**: Latency and reliability issues
+### Continuous Mode (Default)
+- Toggle with hotkey (⌃⇧V)
+- Continuous recording with automatic chunking
+- Visual indicator in HUD
+- Press hotkey again to stop
 
-### 4. No Streaming Support
-- **Issue**: Can't start processing while user is still speaking
-- **Impact**: Added ~800ms delay for every command
+## Debug Features
 
-## Improvement Opportunities
-
-### 1. Adaptive Voice Activity Detection (VAD)
-
-**Current State:**
-- Simple RMS threshold checking
-- No environmental calibration
-
-**Proposed Enhancement:**
-```swift
-class AdaptiveVAD {
-    // Calibrate on startup
-    func calibrateNoiseFloor() -> Float
-    
-    // Dynamic threshold adjustment
-    func updateThresholds(ambientNoise: Float)
-    
-    // Frequency-based detection
-    func detectSpeechUsingSpectrum(buffer: AVAudioPCMBuffer) -> Bool
-}
+### Threshold Logging
+Every 2 seconds, the system logs:
+```
+Dynamic thresholds - Speech: 0.034, Silence: 0.018, Current RMS: 0.012
 ```
 
-**Benefits:**
-- More accurate speech detection
-- Works in varied environments
-- Fewer false positives
+This provides visibility into:
+- Current adaptive thresholds
+- Ambient noise level
+- System responsiveness
 
-### 2. Parallel Processing Pipeline
+## Implementation Details
 
-**Current State:**
-- Sequential: Record → Process → Wait → Repeat
+### Key Classes and Their Responsibilities
 
-**Proposed Enhancement:**
-```swift
-class ParallelCommandProcessor {
-    private let processingQueue = DispatchQueue(label: "processing", attributes: .concurrent)
-    private var pendingChunks: [AudioChunk] = []
-    
-    func processChunkAsync(_ chunk: AudioChunk) {
-        processingQueue.async {
-            // Process in parallel
-            let result = await self.transcribeAndMatch(chunk)
-            
-            // Execute in order
-            DispatchQueue.main.async {
-                self.executeInOrder(result)
-            }
-        }
-    }
-}
-```
+**AudioEngine.swift**
+- Manages AVAudioEngine lifecycle
+- Processes audio buffers
+- Integrates DynamicSilenceDetector
+- Publishes audio chunks
 
-**Benefits:**
-- Can capture next command while processing previous
-- Better handling of rapid commands
-- Maintains execution order
+**CircularBuffer.swift**
+- Generic circular buffer implementation
+- Efficient append and iteration
+- Memory-bounded history tracking
 
-### 3. Hybrid Local/Cloud Processing
+**DynamicSilenceDetector** (in AudioEngine.swift)
+- State machine for speech detection
+- Adaptive threshold calculation
+- Chunk boundary detection
 
-**Current State:**
-- 100% dependent on Whisper API
+**AdaptiveNoiseTracker** (in AudioEngine.swift)
+- Statistical analysis of RMS values
+- Noise floor tracking
+- Real-time updates
 
-**Proposed Enhancement:**
-- Implement local command detection for common phrases
-- Use cloud only for complex/unknown commands
-- Cache frequent commands locally
+### Data Flow
 
-```swift
-class HybridRecognizer {
-    // Check local cache first
-    func recognizeLocally(_ audio: Data) -> Command?
-    
-    // Fall back to cloud if needed
-    func recognizeInCloud(_ audio: Data) async -> Command
-}
-```
+1. **Audio Input**: Microphone → AVAudioEngine → AudioEngine.processAudioBuffer()
+2. **Analysis**: RMS calculation → DynamicSilenceDetector.process()
+3. **Statistics**: AdaptiveNoiseTracker.update() → Threshold recalculation
+4. **Detection**: State transitions → Chunk emission
+5. **Processing**: CommandManager → WhisperService → CommandMatcher
+6. **Execution**: AccessibilityBridge → System actions
 
-**Benefits:**
-- Near-instant response for common commands
-- Reduced API costs
-- Works offline for cached commands
+## Audio Chunk Separation Improvements
 
-### 4. Smarter Chunking Strategy
+To prevent short commands from being appended to subsequent commands, the system implements several safeguards:
 
-**Current State:**
-- Fixed 800ms silence threshold
-- No consideration of speech patterns
+### Buffer Management
+1. **Selective Audio Accumulation** (VAD mode only): Audio is only accumulated during speech and trailing silence states
+2. **Clean Buffer Start**: All buffers are cleared when starting continuous recording
+3. **Complete Buffer Clear**: Buffers are cleared after sending chunks and when stopping recording
 
-**Proposed Enhancement:**
-```swift
-class SmartChunker {
-    // Detect natural speech boundaries
-    func detectPhraseEnd(buffer: AVAudioPCMBuffer) -> Bool {
-        // Analyze:
-        // - Energy contour
-        // - Pitch patterns
-        // - Zero-crossing rate
-        // - Spectral features
-    }
-    
-    // Sliding window for better boundaries
-    func processSlidingWindow(size: TimeInterval = 0.5)
-}
-```
+### Timing Controls
+1. **Minimum Chunk Gap**: 200ms enforced gap between chunks prevents overlap
+2. **Increased Silence Duration**: 
+   - VAD: 1200ms silence timeout (was 1000ms)
+   - Dynamic: 800ms silence duration (was 500ms)
+3. **State Reset**: Confirmation counters and state variables are properly reset between chunks
 
-**Benefits:**
-- More natural command boundaries
-- Fewer cut-off commands
-- Better handling of pauses within commands
+### Processing Safeguards
+1. **State Checking**: Audio chunks are only processed in appropriate states
+2. **Clean State Transitions**: HUD state and recognized text are cleared between commands
+3. **Detector Reset**: Both VAD and dynamic detectors are reset when stopping recording
 
-### 5. Pre-emptive Processing
+These improvements ensure that each voice command is processed as a distinct, isolated chunk, preventing the concatenation of commands that was causing issues with short utterances.
 
-**Current State:**
-- Wait for complete silence before processing
+## Summary
 
-**Proposed Enhancement:**
-- Start transcription speculatively during brief pauses
-- Cancel if speech resumes
-- Use if silence confirmed
-
-```swift
-class SpeculativeProcessor {
-    private var speculativeTask: Task<Transcript, Error>?
-    
-    func onPossibleSilence() {
-        speculativeTask = Task {
-            await transcribe(currentBuffer)
-        }
-    }
-    
-    func onSpeechResumed() {
-        speculativeTask?.cancel()
-    }
-    
-    func onSilenceConfirmed() async {
-        let result = await speculativeTask?.value
-        processCommand(result)
-    }
-}
-```
-
-**Benefits:**
-- Reduced perceived latency
-- More responsive feel
-- Better for natural speech patterns
-
-## Implementation Priority
-
-### Phase 1: Quick Wins (1-2 days)
-1. Reduce silence threshold to 0.5s (test extensively)
-2. Implement basic noise floor calibration
-3. Add performance metrics/logging
-
-### Phase 2: Core Improvements (3-5 days)
-1. Adaptive VAD implementation
-2. Parallel processing pipeline
-3. Smarter chunk boundaries
-
-### Phase 3: Advanced Features (1-2 weeks)
-1. Local command caching
-2. Speculative processing
-3. Full hybrid recognition system
-
-## Success Metrics
-
-- **Latency**: Reduce end-to-end from 1.3s to <800ms
-- **Accuracy**: Maintain >95% command recognition
-- **Reliability**: Handle 99% of commands without errors
-- **Fluidity**: Support 5+ consecutive commands smoothly
-
-## Conclusion
-
-The current implementation provides a solid foundation but has room for significant improvements in responsiveness and reliability. By implementing adaptive voice detection, parallel processing, and smarter chunking strategies, we can create a more fluid and snappy experience that better matches users' natural speech patterns.
+The continuous voice capture system provides a robust, adaptive solution for hands-free command execution. The dynamic silence detection ensures reliable operation across varying acoustic environments while maintaining low latency and high accuracy. The system continuously adapts to ambient conditions, providing a natural and responsive user experience. Recent improvements to buffer management and timing controls ensure clean separation between commands, preventing concatenation issues.

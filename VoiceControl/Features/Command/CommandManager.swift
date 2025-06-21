@@ -38,6 +38,7 @@ class CommandManager: ObservableObject {
     private var hotkeyManager: HotkeyManager?
     
     private var cancellables = Set<AnyCancellable>()
+    private var isProcessingChunk = false  // Guard against concurrent chunk processing
     private var disambiguationTimer: Timer?
     private var disambiguationListeningTimer: Timer?
     
@@ -216,12 +217,30 @@ class CommandManager: ObservableObject {
     
     private func processAudioChunk(_ audioChunk: Data) {
         print("DEBUG: Processing audio chunk of size: \(audioChunk.count) bytes")
+        
+        // Don't process if we're already processing or in an error state
+        guard hudState == .continuousListening || hudState == .disambiguating else {
+            print("DEBUG: Skipping chunk processing - current state: \(hudState)")
+            return
+        }
+        
+        // Guard against concurrent processing
+        guard !isProcessingChunk else {
+            print("DEBUG: Already processing a chunk, skipping")
+            return
+        }
+        
+        isProcessingChunk = true
+        
         // Temporarily change state to processing while keeping continuous mode active
         hudState = .processing
         whisperService.startTranscription(audioData: audioChunk)
     }
     
     private func handleTranscriptionResult(_ text: String) {
+        // Reset processing flag for continuous mode
+        isProcessingChunk = false
+        
         // Check if we got empty transcription
         if text.isEmpty {
             print("DEBUG: Received empty transcription")
@@ -229,12 +248,14 @@ class CommandManager: ObservableObject {
             return
         }
         
+        // Set recognized text immediately to show in HUD
+        recognizedText = text
+        
         // Process non-empty transcription
         handleTranscription(text)
     }
     
     private func handleTranscription(_ text: String) {
-        recognizedText = text
         lastTranscription = text
         
         // If we're in disambiguation state, check for number selection
@@ -252,6 +273,9 @@ class CommandManager: ObservableObject {
                 if isContinuousMode {
                     // Return to continuous listening after executing
                     hudState = .continuousListening
+                    currentMatches = []
+                    // Clear recognized text immediately since it was already shown during processing
+                    recognizedText = ""
                 } else {
                     resetToIdle()
                 }
@@ -321,6 +345,7 @@ class CommandManager: ObservableObject {
         if isContinuousMode {
             hudState = .continuousListening
             currentMatches = []
+            // Clear recognized text immediately since it was already shown during processing
             recognizedText = ""
         } else {
             resetToIdle()
@@ -370,10 +395,12 @@ class CommandManager: ObservableObject {
         error = commandError
         hudState = .error(commandError)
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             if self?.isContinuousMode == true {
                 self?.hudState = .continuousListening
                 self?.error = nil
+                // Clear recognized text after showing error
+                self?.recognizedText = ""
             } else {
                 self?.resetToIdle()
             }

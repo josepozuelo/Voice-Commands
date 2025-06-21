@@ -2,176 +2,6 @@ import Foundation
 import AVFoundation
 import Combine
 
-// MARK: - Adaptive Noise Tracking
-
-struct AdaptiveNoiseTracker {
-    private var rmsHistory: CircularBuffer<Float>
-    private let historyCapacity = 160 // 10 seconds at 16Hz
-    private let shortTermSamples = 16 // ~1 second
-    
-    private(set) var longTermAverage: Float = 0
-    private(set) var shortTermAverage: Float = 0
-    private(set) var standardDeviation: Float = 0
-    private(set) var noiseFloor: Float = 0
-    
-    init() {
-        self.rmsHistory = CircularBuffer<Float>(capacity: historyCapacity)
-    }
-    
-    mutating func update(rms: Float) {
-        rmsHistory.append(rms)
-        
-        let allSamples = rmsHistory.allElements()
-        guard !allSamples.isEmpty else { return }
-        
-        // Calculate long-term average
-        longTermAverage = allSamples.reduce(0, +) / Float(allSamples.count)
-        
-        // Calculate short-term average
-        let recentSamples = rmsHistory.suffix(shortTermSamples)
-        if !recentSamples.isEmpty {
-            shortTermAverage = recentSamples.reduce(0, +) / Float(recentSamples.count)
-        }
-        
-        // Calculate standard deviation
-        let squaredDiffs = allSamples.map { pow($0 - longTermAverage, 2) }
-        let variance = squaredDiffs.reduce(0, +) / Float(allSamples.count)
-        standardDeviation = sqrt(variance)
-        
-        // Calculate noise floor (5th percentile)
-        let sortedSamples = allSamples.sorted()
-        let percentileIndex = max(0, Int(Float(sortedSamples.count) * 0.05) - 1)
-        noiseFloor = sortedSamples[percentileIndex]
-    }
-}
-
-// MARK: - Dynamic Silence Detection
-
-class DynamicSilenceDetector {
-    enum DetectionState {
-        case calibrating
-        case waitingForSpeech
-        case detectingSpeech
-        case trailingSilence
-    }
-    
-    enum DetectionResult {
-        case `continue`
-        case chunkReady
-    }
-    
-    private var state: DetectionState = .calibrating
-    private var noiseTracker = AdaptiveNoiseTracker()
-    private var calibrationStartTime: Date?
-    private var speechStartTime: Date?
-    private var silenceStartTime: Date?
-    private var confirmationCount = 0
-    
-    // Configuration
-    private let calibrationDuration: TimeInterval = Config.calibrationDuration
-    private let minSpeechDuration: TimeInterval = Config.minSpeechDuration
-    private let silenceDuration: TimeInterval = Config.adaptiveSilenceDuration
-    private let confirmationSamples = Config.confirmationSamples
-    private let speechMultiplier: Float = Config.speechMultiplier
-    private let silenceMultiplier: Float = Config.silenceMultiplier
-    private let minThreshold: Float = 0.01
-    private let maxThreshold: Float = 0.5
-    
-    private(set) var currentSpeechThreshold: Float = 0.1
-    private(set) var currentSilenceThreshold: Float = 0.05
-    
-    func reset() {
-        state = .calibrating
-        calibrationStartTime = Date()
-        speechStartTime = nil
-        silenceStartTime = nil
-        confirmationCount = 0
-    }
-    
-    func process(rms: Float, timestamp: Date) -> DetectionResult {
-        // Update noise statistics
-        noiseTracker.update(rms: rms)
-        
-        // Update dynamic thresholds
-        updateThresholds()
-        
-        switch state {
-        case .calibrating:
-            if calibrationStartTime == nil {
-                calibrationStartTime = timestamp
-            }
-            
-            if let startTime = calibrationStartTime,
-               timestamp.timeIntervalSince(startTime) >= calibrationDuration {
-                state = .waitingForSpeech
-            }
-            return .continue
-            
-        case .waitingForSpeech:
-            if rms >= currentSpeechThreshold {
-                confirmationCount += 1
-                if confirmationCount >= confirmationSamples {
-                    state = .detectingSpeech
-                    speechStartTime = timestamp
-                    confirmationCount = 0
-                }
-            } else {
-                confirmationCount = 0
-            }
-            return .continue
-            
-        case .detectingSpeech:
-            if rms < currentSilenceThreshold {
-                if silenceStartTime == nil {
-                    silenceStartTime = timestamp
-                }
-                state = .trailingSilence
-            }
-            return .continue
-            
-        case .trailingSilence:
-            if rms >= currentSpeechThreshold {
-                // Speech resumed
-                state = .detectingSpeech
-                silenceStartTime = nil
-            } else if let silenceStart = silenceStartTime,
-                      timestamp.timeIntervalSince(silenceStart) >= silenceDuration {
-                // Check minimum speech duration
-                if let speechStart = speechStartTime,
-                   timestamp.timeIntervalSince(speechStart) >= minSpeechDuration {
-                    // Valid chunk detected
-                    state = .waitingForSpeech
-                    speechStartTime = nil
-                    silenceStartTime = nil
-                    return .chunkReady
-                } else {
-                    // Too short, reset
-                    state = .waitingForSpeech
-                    speechStartTime = nil
-                    silenceStartTime = nil
-                }
-            }
-            return .continue
-        }
-    }
-    
-    private func updateThresholds() {
-        let baseline = noiseTracker.longTermAverage
-        let stdDev = noiseTracker.standardDeviation
-        
-        // Calculate speech threshold
-        let adaptiveSpeechThreshold = max(
-            baseline + 2 * stdDev,
-            baseline * speechMultiplier
-        )
-        currentSpeechThreshold = min(max(adaptiveSpeechThreshold, minThreshold), maxThreshold)
-        
-        // Calculate silence threshold
-        let adaptiveSilenceThreshold = baseline + 0.5 * stdDev
-        currentSilenceThreshold = min(max(adaptiveSilenceThreshold, minThreshold), maxThreshold)
-    }
-}
-
 class AudioEngine: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0
@@ -192,12 +22,19 @@ class AudioEngine: NSObject, ObservableObject {
     private var currentChunkBuffer = Data()
     private var silenceTimer: Timer?
     
-    // Dynamic silence detection
-    private var dynamicDetector = DynamicSilenceDetector()
+    // VAD silence detection
+    private var vadDetector = VADSilenceDetector()
+    
+    // Pre-trigger buffer to capture audio before speech is detected
+    private var preTriggerBuffer = CircularBuffer<Data>(capacity: 50)  // ~1 second of audio at 20ms frames
     
     // For debugging
     private var lastThresholdLogTime = Date()
     private let thresholdLogInterval: TimeInterval = 2.0
+    
+    // Chunk separation timing
+    private var lastChunkSentTime: Date?
+    private let minimumChunkGap: TimeInterval = 0.5  // 500ms minimum gap between chunks for better separation
     
     override init() {
         super.init()
@@ -252,10 +89,14 @@ class AudioEngine: NSObject, ObservableObject {
     func startContinuousRecording() {
         guard !isRecording else { return }
         
+        // Clear all buffers before starting
         audioBuffer.removeAll()
         currentChunkBuffer.removeAll()
+        preTriggerBuffer.clear()
         isContinuousMode = true
-        dynamicDetector.reset()
+        
+        // Reset VAD detector to ensure clean state
+        vadDetector.reset()
         
         audioEngine = AVAudioEngine()
         guard let audioEngine = audioEngine else { return }
@@ -277,6 +118,7 @@ class AudioEngine: NSObject, ObservableObject {
         do {
             try audioEngine.start()
             isRecording = true
+            print("DEBUG: Started continuous recording with clean buffers")
         } catch {
             print("Failed to start audio engine: \(error)")
         }
@@ -294,15 +136,26 @@ class AudioEngine: NSObject, ObservableObject {
         inputNode = nil
         
         isRecording = false
-        isContinuousMode = false
         
+        // Check if we were in continuous mode before clearing the flag
         if isContinuousMode && !currentChunkBuffer.isEmpty {
             // Send any remaining chunk
+            print("DEBUG: Sending final chunk on stop: \(currentChunkBuffer.count) bytes")
             audioChunkPublisher.send(currentChunkBuffer)
             currentChunkBuffer.removeAll()
         } else if !audioBuffer.isEmpty {
             recordingCompletePublisher.send(audioBuffer)
         }
+        
+        // Clear all buffers
+        currentChunkBuffer.removeAll()
+        audioBuffer.removeAll()
+        
+        // Reset continuous mode flag after processing
+        isContinuousMode = false
+        
+        // Reset VAD detector
+        vadDetector.reset()
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -325,23 +178,64 @@ class AudioEngine: NSObject, ObservableObject {
         let convertedData = convertToTargetSampleRate(buffer)
         
         if isContinuousMode {
-            // Add to current chunk buffer
-            currentChunkBuffer.append(convertedData)
+            let previousState = vadDetector.state
             
-            // Process with dynamic detector
-            let result = dynamicDetector.process(rms: rms, timestamp: Date())
+            // Process with VAD detector
+            let result = vadDetector.processAudioData(convertedData)
             
-            // Log thresholds periodically for debugging
+            // Handle state transitions and audio accumulation
+            switch (previousState, vadDetector.state) {
+            case (.idle, .speechDetected):
+                // Speech just started - add pre-trigger buffer to capture the beginning
+                print("DEBUG: Speech started, adding pre-trigger buffer")
+                for audioData in preTriggerBuffer.allElements() {
+                    currentChunkBuffer.append(audioData)
+                }
+                currentChunkBuffer.append(convertedData)
+                
+            case (.speechDetected, _), (.trailingSilence, _):
+                // Continue accumulating during speech and trailing silence
+                currentChunkBuffer.append(convertedData)
+                
+            case (.idle, .idle):
+                // While idle, keep audio in pre-trigger buffer
+                preTriggerBuffer.append(convertedData)
+                
+            default:
+                // Other transitions
+                currentChunkBuffer.append(convertedData)
+            }
+            
+            // Log VAD state periodically for debugging
             if Date().timeIntervalSince(lastThresholdLogTime) >= thresholdLogInterval {
-                print("Dynamic thresholds - Speech: \(dynamicDetector.currentSpeechThreshold), Silence: \(dynamicDetector.currentSilenceThreshold), Current RMS: \(rms)")
+                print("VAD state: \(vadDetector.state), RMS: \(rms)")
                 lastThresholdLogTime = Date()
             }
             
             if result == .chunkReady {
+                // Check if enough time has passed since last chunk
+                let now = Date()
+                if let lastSent = lastChunkSentTime {
+                    let timeSinceLastChunk = now.timeIntervalSince(lastSent)
+                    if timeSinceLastChunk < minimumChunkGap {
+                        print("DEBUG: Skipping chunk - too soon after last chunk (\(timeSinceLastChunk)s)")
+                        return
+                    }
+                }
+                
                 // Send the chunk
                 if !currentChunkBuffer.isEmpty {
+                    print("DEBUG: Sending audio chunk of size: \(currentChunkBuffer.count) bytes")
                     audioChunkPublisher.send(currentChunkBuffer)
                     currentChunkBuffer.removeAll()
+                    preTriggerBuffer.clear()  // Clear pre-trigger buffer after sending chunk
+                    lastChunkSentTime = now
+                    
+                    // Add a small delay before processing new audio to ensure clean separation
+                    // This helps prevent residual audio from being included in the next chunk
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        // Buffer is already cleared, just a timing guard
+                    }
                 }
             }
         } else {
@@ -392,16 +286,16 @@ class AudioEngine: NSObject, ObservableObject {
     func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {
         #if os(macOS)
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            completion(true)
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
-                DispatchQueue.main.async {
-                    completion(granted)
+            case .authorized:
+                completion(true)
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    DispatchQueue.main.async {
+                        completion(granted)
+                    }
                 }
-            }
-        default:
-            completion(false)
+            default:
+                completion(false)
         }
         #else
         AVAudioSession.sharedInstance().requestRecordPermission { granted in

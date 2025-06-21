@@ -9,12 +9,13 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 **Bundle Identifier**: com.yourteam.VoiceControl  
 **Minimum Requirements**: macOS 13.0+, Xcode 15.0+, Swift 5.0
 
-## Workflow
-- First think through the problem, read the codebase for relevant files and ask any questions or do any research you might need.
-- You will then plan out the feature or task at hand, if the feature needs some high-level definition and design, you can create a spec in the spec folder, so that I can review and work through it with you. If the feature is well defined or straightforward you can skip to the next step.
-- You will use the todo.md file in the tasks folder to have an implementation plan with the specific todos you need to execute on. I will be able to collaborate with you in that file. 
-- Once I give you the greenlight you can start implementing and start checking off the todo items as you go. 
-- Commit your work when you think it's a good checkpoint. 
+## Development Workflow
+
+1. **Analyze**: Read relevant code, understand the problem
+2. **Design** (if needed): Create spec in `specs/` folder for complex features
+3. **Plan**: Use `tasks/todo.md` to list implementation steps
+4. **Implement**: Execute tasks after approval, check off items as completed
+5. **Commit**: Create commits at logical checkpoints 
 
 ## Development Commands
 
@@ -96,6 +97,13 @@ The fuzzy matching system uses confidence scoring (threshold: 0.85) to decide be
 - **⌃⇧V**: Voice Commands (implemented)
 - **⌥⌘D**: Dictation Mode (future feature)
 - **⌥⌘E**: Edit Mode (future feature)
+
+## Configuration Files
+
+- **Config/Secrets.xcconfig**: API key storage (create from Secrets.xcconfig.example)
+- **Config/Base.xcconfig**: Base configuration inheriting from Secrets
+- **Info.plist**: App permissions and bundle configuration
+- **VoiceControl.entitlements**: App sandbox and permission entitlements
 
 ## Adding New Commands
 
