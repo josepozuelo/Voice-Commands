@@ -1,0 +1,8 @@
+// Base configuration for VoiceControl
+// This file includes the secrets configuration
+
+#include "Secrets.xcconfig"
+
+// Other non-sensitive configuration values can go here
+APP_NAME = VoiceControl
+BUNDLE_IDENTIFIER = com.yourteam.VoiceControl

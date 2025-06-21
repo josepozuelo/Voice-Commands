@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconFile</key>
+	<string></string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VoiceControl needs microphone access to recognize voice commands and perform speech-to-text conversion.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>VoiceControl needs Apple Events access to execute system commands and interact with other applications.</string>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>VoiceControl needs accessibility access to perform text selection, cursor movement, and text manipulation in other applications.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>VoiceControl needs system administration access to monitor global keyboard shortcuts and perform system-level operations.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>VoiceControl</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>voicecontrol</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSBackgroundOnly</key>
+	<false/>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>OpenAIAPIKey</key>
+	<string>$(OPENAI_API_KEY)</string>
+</dict>
+</plist>

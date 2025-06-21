@@ -1,0 +1,215 @@
+{
+  "commands": [
+    {
+      "id": "select_word",
+      "phrases": ["select word", "highlight word", "select the word"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "word"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_last_word",
+      "phrases": ["select last word", "highlight last word", "select previous word"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "lastWord"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_sentence",
+      "phrases": ["select sentence", "highlight sentence", "select the sentence"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "sentence"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_last_sentence",
+      "phrases": ["select last sentence", "highlight last sentence", "select previous sentence"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "lastSentence"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_paragraph",
+      "phrases": ["select paragraph", "highlight paragraph", "select the paragraph"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "paragraph"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_last_paragraph",
+      "phrases": ["select last paragraph", "highlight last paragraph", "select previous paragraph"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "lastParagraph"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_all",
+      "phrases": ["select all", "highlight all", "select everything"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "all"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "select_line",
+      "phrases": ["select line", "highlight line", "select the line"],
+      "action": {
+        "type": "selectText",
+        "selectionType": "line"
+      },
+      "category": "textSelection"
+    },
+    {
+      "id": "copy",
+      "phrases": ["copy", "copy that", "copy selection"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘C"
+      },
+      "category": "system"
+    },
+    {
+      "id": "paste",
+      "phrases": ["paste", "paste that", "paste here"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘V"
+      },
+      "category": "system"
+    },
+    {
+      "id": "cut",
+      "phrases": ["cut", "cut that", "cut selection"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘X"
+      },
+      "category": "system"
+    },
+    {
+      "id": "undo",
+      "phrases": ["undo", "undo that", "go back"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘Z"
+      },
+      "category": "system"
+    },
+    {
+      "id": "redo",
+      "phrases": ["redo", "redo that", "go forward"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘⇧Z"
+      },
+      "category": "system"
+    },
+    {
+      "id": "delete_word",
+      "phrases": ["delete word", "remove word", "erase word"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌥⌫"
+      },
+      "category": "editing"
+    },
+    {
+      "id": "go_to_end",
+      "phrases": ["go to end", "move to end", "cursor to end", "end of document"],
+      "action": {
+        "type": "moveCursor",
+        "direction": "end",
+        "unit": "document"
+      },
+      "category": "navigation"
+    },
+    {
+      "id": "go_to_beginning",
+      "phrases": ["go to beginning", "move to beginning", "cursor to beginning", "start of document"],
+      "action": {
+        "type": "moveCursor",
+        "direction": "beginning",
+        "unit": "document"
+      },
+      "category": "navigation"
+    },
+    {
+      "id": "next_word",
+      "phrases": ["next word", "forward word", "move to next word"],
+      "action": {
+        "type": "moveCursor",
+        "direction": "right",
+        "unit": "word"
+      },
+      "category": "navigation"
+    },
+    {
+      "id": "previous_word",
+      "phrases": ["previous word", "back word", "move to previous word"],
+      "action": {
+        "type": "moveCursor",
+        "direction": "left",
+        "unit": "word"
+      },
+      "category": "navigation"
+    },
+    {
+      "id": "switch_window",
+      "phrases": ["switch window", "change window", "next window"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘`"
+      },
+      "category": "system"
+    },
+    {
+      "id": "next_tab",
+      "phrases": ["next tab", "forward tab", "tab right"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌃⇥"
+      },
+      "category": "system"
+    },
+    {
+      "id": "previous_tab",
+      "phrases": ["previous tab", "back tab", "tab left"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌃⇧⇥"
+      },
+      "category": "system"
+    },
+    {
+      "id": "save",
+      "phrases": ["save", "save file", "save document"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘S"
+      },
+      "category": "system"
+    },
+    {
+      "id": "find",
+      "phrases": ["find", "search", "find text"],
+      "action": {
+        "type": "systemAction",
+        "key": "⌘F"
+      },
+      "category": "system"
+    }
+  ]
+}
