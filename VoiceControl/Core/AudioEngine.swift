@@ -19,6 +19,7 @@ class AudioEngine: NSObject, ObservableObject {
     
     // Continuous mode properties
     private var isContinuousMode = false
+    private var hasDetectedSpeech = false
     private var silenceStartTime: Date?
     private var chunkStartTime: Date?
     private var currentChunkBuffer = Data()
@@ -80,6 +81,7 @@ class AudioEngine: NSObject, ObservableObject {
         audioBuffer.removeAll()
         currentChunkBuffer.removeAll()
         isContinuousMode = true
+        hasDetectedSpeech = false
         chunkStartTime = Date()
         silenceStartTime = nil
         
@@ -154,25 +156,35 @@ class AudioEngine: NSObject, ObservableObject {
             // Add to current chunk buffer
             currentChunkBuffer.append(convertedData)
             
-            // Check if we're in silence
-            if rms < Config.silenceRMSThreshold {
-                // We're in silence
-                if silenceStartTime == nil {
-                    silenceStartTime = Date()
-                }
-                
-                // Check if silence duration has been met
-                if let silenceStart = silenceStartTime,
-                   Date().timeIntervalSince(silenceStart) >= Config.silenceDuration {
-                    processSilenceDetected()
-                }
-            } else {
-                // Not in silence, reset silence timer
-                silenceStartTime = nil
+            // Check if this is speech
+            if rms >= Config.speechDetectionThreshold {
+                hasDetectedSpeech = true
+                silenceStartTime = nil  // Reset silence timer when speech detected
             }
             
-            // Check for maximum chunk duration
-            if let chunkStart = chunkStartTime,
+            // Only process silence if we've detected speech first
+            if hasDetectedSpeech {
+                // Check if we're in silence
+                if rms < Config.silenceRMSThreshold {
+                    // We're in silence
+                    if silenceStartTime == nil {
+                        silenceStartTime = Date()
+                    }
+                    
+                    // Check if silence duration has been met
+                    if let silenceStart = silenceStartTime,
+                       Date().timeIntervalSince(silenceStart) >= Config.silenceDuration {
+                        processSilenceDetected()
+                    }
+                } else {
+                    // Not in silence, reset silence timer
+                    silenceStartTime = nil
+                }
+            }
+            
+            // Check for maximum chunk duration (only if speech detected)
+            if hasDetectedSpeech,
+               let chunkStart = chunkStartTime,
                Date().timeIntervalSince(chunkStart) >= Config.maxAudioChunkDuration {
                 processChunkTimeout()
             }
@@ -233,6 +245,7 @@ class AudioEngine: NSObject, ObservableObject {
         
         // Reset for next chunk
         currentChunkBuffer.removeAll()
+        hasDetectedSpeech = false  // Reset speech detection for next chunk
         chunkStartTime = Date()
         silenceStartTime = nil
     }
@@ -242,6 +255,7 @@ class AudioEngine: NSObject, ObservableObject {
         if !currentChunkBuffer.isEmpty {
             audioChunkPublisher.send(currentChunkBuffer)
             currentChunkBuffer.removeAll()
+            hasDetectedSpeech = false  // Reset speech detection for next chunk
             chunkStartTime = Date()
             silenceStartTime = nil
         }

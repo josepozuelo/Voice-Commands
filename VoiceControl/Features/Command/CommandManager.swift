@@ -152,6 +152,24 @@ class CommandManager: ObservableObject {
         hudState = .idle
     }
     
+    func cancelCurrentOperation() {
+        // Cancel any active timers
+        disambiguationTimer?.invalidate()
+        disambiguationListeningTimer?.invalidate()
+        
+        // Stop recording if active
+        if isListening {
+            if isContinuousMode {
+                stopContinuousMode()
+            } else {
+                stopVoiceCommand()
+            }
+        }
+        
+        // Reset to idle state
+        resetToIdle()
+    }
+    
     func retryLastCommand() {
         if !lastTranscription.isEmpty {
             hudState = .processing

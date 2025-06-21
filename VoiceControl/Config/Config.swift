@@ -38,6 +38,7 @@ struct Config {
     // Continuous Mode Configuration
     static let continuousMode = true  // Toggle for continuous mode
     static let silenceRMSThreshold: Float = 0.01  // Audio level threshold for silence
+    static let speechDetectionThreshold: Float = 0.02  // Audio level threshold to detect speech
     static let silenceDuration: TimeInterval = 0.8  // Duration of silence to trigger processing
     static let minAudioChunkDuration: TimeInterval = 0.5  // Minimum audio chunk size
     static let maxAudioChunkDuration: TimeInterval = 10.0  // Maximum before forced processing

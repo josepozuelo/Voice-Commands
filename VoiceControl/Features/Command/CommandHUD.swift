@@ -376,6 +376,7 @@ struct CommandHUDWindow: NSViewRepresentable {
 
 class CommandHUDWindowController: NSWindowController {
     private var commandManager: CommandManager
+    private var eventMonitor: Any?
     
     init(commandManager: CommandManager) {
         self.commandManager = commandManager
@@ -392,6 +393,7 @@ class CommandHUDWindowController: NSWindowController {
         setupWindow()
         setupContent()
         observeCommandManager()
+        setupEscapeKeyMonitor()
     }
     
     required init?(coder: NSCoder) {
@@ -475,5 +477,23 @@ class CommandHUDWindowController: NSWindowController {
         let y = screenFrame.minY + Config.hudBottomMargin
         
         window.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+    
+    private func setupEscapeKeyMonitor() {
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // 53 is the key code for Escape
+                if self?.commandManager.hudState != .idle {
+                    self?.commandManager.cancelCurrentOperation()
+                    return nil // Consume the event
+                }
+            }
+            return event
+        }
+    }
+    
+    deinit {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VoiceControl is a macOS voice command app built with SwiftUI that enables hands-free text manipulation. It uses OpenAI's Whisper API for speech recognition and macOS Accessibility APIs for text control.
+VoiceControl is a macOS voice command app built with SwiftUI that enables hands-free text manipulation. It uses OpenAI's Whisper API for speech recognition and macOS Accessibility APIs for text control. Features continuous voice command mode with automatic silence detection and voice-based disambiguation.
 
 ## Workflow
 - First think through the problem, read the codebase for relevant files and ask any questions or do any research you might need.
@@ -51,23 +51,23 @@ The app requires these macOS permissions:
 
 ### Core System Flow
 1. **HotkeyManager** detects ⌃⇧V (Control+Shift+V) global hotkey
-2. **AudioEngine** captures microphone input and processes audio
+2. **AudioEngine** captures microphone input with silence detection for continuous mode
 3. **WhisperService** sends audio to OpenAI Whisper API for transcription
 4. **CommandMatcher** performs fuzzy matching against commands in `commands.json`
-5. **CommandManager** orchestrates the workflow and decides execution vs. disambiguation
-6. **CommandHUD** displays visual feedback and disambiguation UI when needed
+5. **CommandManager** orchestrates workflow, handles continuous mode and voice disambiguation
+6. **CommandHUD** displays visual feedback, continuous mode indicator, and voice-enabled disambiguation
 7. **AccessibilityBridge** executes the final text manipulation via AXUIElement APIs
 
 ### Key Components
 
 - **VoiceControlApp.swift**: Main app entry point, sets up as accessory app with hidden window
-- **Config/Config.swift**: Centralized configuration including API keys, hotkey codes, and thresholds
-- **Core/AudioEngine.swift**: Microphone capture and audio processing
+- **Config/Config.swift**: Centralized configuration including API keys, hotkey codes, thresholds, and continuous mode settings
+- **Core/AudioEngine.swift**: Microphone capture, audio processing, and silence detection for continuous mode
 - **Core/WhisperService.swift**: OpenAI Whisper API integration for speech-to-text
 - **Core/AccessibilityBridge.swift**: Text manipulation via macOS Accessibility APIs
-- **Features/Command/CommandManager.swift**: Workflow orchestration and state management
+- **Features/Command/CommandManager.swift**: Workflow orchestration, continuous mode management, and voice disambiguation
 - **Features/Command/CommandMatcher.swift**: Fuzzy matching algorithm with confidence scoring
-- **Features/Command/CommandHUD.swift**: Visual feedback and disambiguation interface
+- **Features/Command/CommandHUD.swift**: Visual feedback, continuous mode UI, and voice-enabled disambiguation
 - **Models/Command.swift**: Command data structures and JSON parsing
 - **Resources/commands.json**: Command definitions with phrases and actions
 - **Utils/HotkeyManager.swift**: Global hotkey registration and detection
@@ -82,7 +82,11 @@ Commands are defined in `Resources/commands.json` with:
 
 The fuzzy matching system uses confidence scoring (threshold: 0.85) to decide between:
 - Auto-execution for high-confidence matches
-- Disambiguation HUD for multiple possible matches
+- Disambiguation HUD for multiple possible matches (voice-enabled: say "one", "two", or "three")
+
+### Operating Modes
+- **Single Command Mode**: Press hotkey, speak command, auto-stops after execution
+- **Continuous Mode** (default): Press hotkey once, speak multiple commands, auto-detects silence between commands, press hotkey again to stop
 
 ### Global Hotkeys
 - **⌃⇧V**: Voice Commands (implemented)
