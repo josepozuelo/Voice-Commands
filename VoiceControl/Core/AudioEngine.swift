@@ -2,6 +2,176 @@ import Foundation
 import AVFoundation
 import Combine
 
+// MARK: - Adaptive Noise Tracking
+
+struct AdaptiveNoiseTracker {
+    private var rmsHistory: CircularBuffer<Float>
+    private let historyCapacity = 160 // 10 seconds at 16Hz
+    private let shortTermSamples = 16 // ~1 second
+    
+    private(set) var longTermAverage: Float = 0
+    private(set) var shortTermAverage: Float = 0
+    private(set) var standardDeviation: Float = 0
+    private(set) var noiseFloor: Float = 0
+    
+    init() {
+        self.rmsHistory = CircularBuffer<Float>(capacity: historyCapacity)
+    }
+    
+    mutating func update(rms: Float) {
+        rmsHistory.append(rms)
+        
+        let allSamples = rmsHistory.allElements()
+        guard !allSamples.isEmpty else { return }
+        
+        // Calculate long-term average
+        longTermAverage = allSamples.reduce(0, +) / Float(allSamples.count)
+        
+        // Calculate short-term average
+        let recentSamples = rmsHistory.suffix(shortTermSamples)
+        if !recentSamples.isEmpty {
+            shortTermAverage = recentSamples.reduce(0, +) / Float(recentSamples.count)
+        }
+        
+        // Calculate standard deviation
+        let squaredDiffs = allSamples.map { pow($0 - longTermAverage, 2) }
+        let variance = squaredDiffs.reduce(0, +) / Float(allSamples.count)
+        standardDeviation = sqrt(variance)
+        
+        // Calculate noise floor (5th percentile)
+        let sortedSamples = allSamples.sorted()
+        let percentileIndex = max(0, Int(Float(sortedSamples.count) * 0.05) - 1)
+        noiseFloor = sortedSamples[percentileIndex]
+    }
+}
+
+// MARK: - Dynamic Silence Detection
+
+class DynamicSilenceDetector {
+    enum DetectionState {
+        case calibrating
+        case waitingForSpeech
+        case detectingSpeech
+        case trailingSilence
+    }
+    
+    enum DetectionResult {
+        case `continue`
+        case chunkReady
+    }
+    
+    private var state: DetectionState = .calibrating
+    private var noiseTracker = AdaptiveNoiseTracker()
+    private var calibrationStartTime: Date?
+    private var speechStartTime: Date?
+    private var silenceStartTime: Date?
+    private var confirmationCount = 0
+    
+    // Configuration
+    private let calibrationDuration: TimeInterval = Config.calibrationDuration
+    private let minSpeechDuration: TimeInterval = Config.minSpeechDuration
+    private let silenceDuration: TimeInterval = Config.adaptiveSilenceDuration
+    private let confirmationSamples = Config.confirmationSamples
+    private let speechMultiplier: Float = Config.speechMultiplier
+    private let silenceMultiplier: Float = Config.silenceMultiplier
+    private let minThreshold: Float = 0.01
+    private let maxThreshold: Float = 0.5
+    
+    private(set) var currentSpeechThreshold: Float = 0.1
+    private(set) var currentSilenceThreshold: Float = 0.05
+    
+    func reset() {
+        state = .calibrating
+        calibrationStartTime = Date()
+        speechStartTime = nil
+        silenceStartTime = nil
+        confirmationCount = 0
+    }
+    
+    func process(rms: Float, timestamp: Date) -> DetectionResult {
+        // Update noise statistics
+        noiseTracker.update(rms: rms)
+        
+        // Update dynamic thresholds
+        updateThresholds()
+        
+        switch state {
+        case .calibrating:
+            if calibrationStartTime == nil {
+                calibrationStartTime = timestamp
+            }
+            
+            if let startTime = calibrationStartTime,
+               timestamp.timeIntervalSince(startTime) >= calibrationDuration {
+                state = .waitingForSpeech
+            }
+            return .continue
+            
+        case .waitingForSpeech:
+            if rms >= currentSpeechThreshold {
+                confirmationCount += 1
+                if confirmationCount >= confirmationSamples {
+                    state = .detectingSpeech
+                    speechStartTime = timestamp
+                    confirmationCount = 0
+                }
+            } else {
+                confirmationCount = 0
+            }
+            return .continue
+            
+        case .detectingSpeech:
+            if rms < currentSilenceThreshold {
+                if silenceStartTime == nil {
+                    silenceStartTime = timestamp
+                }
+                state = .trailingSilence
+            }
+            return .continue
+            
+        case .trailingSilence:
+            if rms >= currentSpeechThreshold {
+                // Speech resumed
+                state = .detectingSpeech
+                silenceStartTime = nil
+            } else if let silenceStart = silenceStartTime,
+                      timestamp.timeIntervalSince(silenceStart) >= silenceDuration {
+                // Check minimum speech duration
+                if let speechStart = speechStartTime,
+                   timestamp.timeIntervalSince(speechStart) >= minSpeechDuration {
+                    // Valid chunk detected
+                    state = .waitingForSpeech
+                    speechStartTime = nil
+                    silenceStartTime = nil
+                    return .chunkReady
+                } else {
+                    // Too short, reset
+                    state = .waitingForSpeech
+                    speechStartTime = nil
+                    silenceStartTime = nil
+                }
+            }
+            return .continue
+        }
+    }
+    
+    private func updateThresholds() {
+        let baseline = noiseTracker.longTermAverage
+        let stdDev = noiseTracker.standardDeviation
+        
+        // Calculate speech threshold
+        let adaptiveSpeechThreshold = max(
+            baseline + 2 * stdDev,
+            baseline * speechMultiplier
+        )
+        currentSpeechThreshold = min(max(adaptiveSpeechThreshold, minThreshold), maxThreshold)
+        
+        // Calculate silence threshold
+        let adaptiveSilenceThreshold = baseline + 0.5 * stdDev
+        currentSilenceThreshold = min(max(adaptiveSilenceThreshold, minThreshold), maxThreshold)
+    }
+}
+
 class AudioEngine: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0
@@ -19,11 +189,15 @@ class AudioEngine: NSObject, ObservableObject {
     
     // Continuous mode properties
     private var isContinuousMode = false
-    private var hasDetectedSpeech = false
-    private var silenceStartTime: Date?
-    private var chunkStartTime: Date?
     private var currentChunkBuffer = Data()
     private var silenceTimer: Timer?
+    
+    // Dynamic silence detection
+    private var dynamicDetector = DynamicSilenceDetector()
+    
+    // For debugging
+    private var lastThresholdLogTime = Date()
+    private let thresholdLogInterval: TimeInterval = 2.0
     
     override init() {
         super.init()
@@ -81,9 +255,7 @@ class AudioEngine: NSObject, ObservableObject {
         audioBuffer.removeAll()
         currentChunkBuffer.removeAll()
         isContinuousMode = true
-        hasDetectedSpeech = false
-        chunkStartTime = Date()
-        silenceStartTime = nil
+        dynamicDetector.reset()
         
         audioEngine = AVAudioEngine()
         guard let audioEngine = audioEngine else { return }
@@ -156,37 +328,21 @@ class AudioEngine: NSObject, ObservableObject {
             // Add to current chunk buffer
             currentChunkBuffer.append(convertedData)
             
-            // Check if this is speech
-            if rms >= Config.speechDetectionThreshold {
-                hasDetectedSpeech = true
-                silenceStartTime = nil  // Reset silence timer when speech detected
+            // Process with dynamic detector
+            let result = dynamicDetector.process(rms: rms, timestamp: Date())
+            
+            // Log thresholds periodically for debugging
+            if Date().timeIntervalSince(lastThresholdLogTime) >= thresholdLogInterval {
+                print("Dynamic thresholds - Speech: \(dynamicDetector.currentSpeechThreshold), Silence: \(dynamicDetector.currentSilenceThreshold), Current RMS: \(rms)")
+                lastThresholdLogTime = Date()
             }
             
-            // Only process silence if we've detected speech first
-            if hasDetectedSpeech {
-                // Check if we're in silence
-                if rms < Config.silenceRMSThreshold {
-                    // We're in silence
-                    if silenceStartTime == nil {
-                        silenceStartTime = Date()
-                    }
-                    
-                    // Check if silence duration has been met
-                    if let silenceStart = silenceStartTime,
-                       Date().timeIntervalSince(silenceStart) >= Config.silenceDuration {
-                        processSilenceDetected()
-                    }
-                } else {
-                    // Not in silence, reset silence timer
-                    silenceStartTime = nil
+            if result == .chunkReady {
+                // Send the chunk
+                if !currentChunkBuffer.isEmpty {
+                    audioChunkPublisher.send(currentChunkBuffer)
+                    currentChunkBuffer.removeAll()
                 }
-            }
-            
-            // Check for maximum chunk duration (only if speech detected)
-            if hasDetectedSpeech,
-               let chunkStart = chunkStartTime,
-               Date().timeIntervalSince(chunkStart) >= Config.maxAudioChunkDuration {
-                processChunkTimeout()
             }
         } else {
             // Normal recording mode
@@ -232,34 +388,6 @@ class AudioEngine: NSObject, ObservableObject {
         return Data(bytes: outputSamples, count: outputSamples.count * MemoryLayout<Float>.size)
     }
     
-    private func processSilenceDetected() {
-        // Check if we have enough audio for a valid chunk
-        guard currentChunkBuffer.count > 0,
-              let chunkStart = chunkStartTime,
-              Date().timeIntervalSince(chunkStart) >= Config.minAudioChunkDuration else {
-            return
-        }
-        
-        // Send the chunk
-        audioChunkPublisher.send(currentChunkBuffer)
-        
-        // Reset for next chunk
-        currentChunkBuffer.removeAll()
-        hasDetectedSpeech = false  // Reset speech detection for next chunk
-        chunkStartTime = Date()
-        silenceStartTime = nil
-    }
-    
-    private func processChunkTimeout() {
-        // Force send chunk when max duration reached
-        if !currentChunkBuffer.isEmpty {
-            audioChunkPublisher.send(currentChunkBuffer)
-            currentChunkBuffer.removeAll()
-            hasDetectedSpeech = false  // Reset speech detection for next chunk
-            chunkStartTime = Date()
-            silenceStartTime = nil
-        }
-    }
     
     func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {
         #if os(macOS)

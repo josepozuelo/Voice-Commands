@@ -1,316 +1,284 @@
-# Dynamic Silence Detection - Design Specification
+# Dynamic Silence/Speech Detection Specification
+
+## Overview
+
+This specification details an adaptive audio detection system that dynamically adjusts to varying background noise levels, preventing false triggers and ensuring reliable speech detection in different acoustic environments.
 
 ## Problem Statement
 
-The current fixed threshold approach causes two critical issues:
-1. **False Positives**: "No command detected" triggers from background noise changes
-2. **False Negatives**: Missed speech in environments where ambient noise is near the threshold
+Current implementation uses fixed thresholds:
+- Silence threshold: 0.01 RMS
+- Speech threshold: 0.02 RMS
 
-## Solution: Adaptive Relative Detection
+These fail in:
+- Noisy environments (background noise > 0.01)
+- Quiet environments (speech < 0.02)
+- Variable noise conditions (AC turning on/off, traffic, etc.)
 
-### Core Concept
+## Solution Design
 
-Instead of fixed thresholds, use relative changes from a rolling baseline:
-- Track ambient noise level continuously
-- Detect speech as significant increase above baseline
-- Detect silence as return to near-baseline levels
+### Core Concepts
 
-### Design Elements
+1. **Adaptive Background Noise Tracking**
+   - Rolling average of audio levels during "silence" periods
+   - Exponentially weighted moving average (EWMA) for smooth adaptation
+   - Separate tracking for short-term (1s) and long-term (10s) averages
 
-## 1. Adaptive Background Noise Tracking
+2. **Relative Detection Thresholds**
+   - Speech detection: background_noise × speech_multiplier (default: 2.0)
+   - Silence detection: background_noise × silence_multiplier (default: 1.3)
+   - Dynamic range limits to prevent extreme thresholds
+
+3. **State Machine**
+   - CALIBRATING: Initial noise level assessment
+   - WAITING_FOR_SPEECH: Listening for speech onset
+   - DETECTING_SPEECH: Speech detected, accumulating audio
+   - TRAILING_SILENCE: Speech ended, waiting for silence confirmation
+
+4. **Noise Floor Calibration**
+   - Initial 0.5s calibration period on startup
+   - Continuous adaptation during silence periods
+   - Reset protection to prevent drift
+
+## Implementation Details
+
+### AudioEngine Enhancement
 
 ```swift
-struct AdaptiveNoiseTracker {
-    // Rolling statistics
-    private var shortTermAverage: Float = 0.0  // 1-second window
-    private var longTermAverage: Float = 0.0   // 10-second window
-    private var noiseFloor: Float = 0.0        // Minimum observed
-    private var standardDeviation: Float = 0.0  // Noise variability
+// New properties for adaptive detection
+private struct AdaptiveDetection {
+    var shortTermAverage: Float = 0.0  // 1s window
+    var longTermAverage: Float = 0.0   // 10s window
+    var calibrationSamples: [Float] = []
+    var isCalibrated = false
     
-    // Circular buffer for recent RMS values
-    private var rmsHistory: CircularBuffer<Float> = CircularBuffer(capacity: 160) // 10s at 16Hz
+    // Adaptive thresholds
+    var currentSpeechThreshold: Float = 0.02
+    var currentSilenceThreshold: Float = 0.01
     
-    // Update with new RMS value
-    mutating func update(rms: Float) {
-        rmsHistory.append(rms)
-        updateStatistics()
-    }
+    // State tracking
+    var detectionState: DetectionState = .calibrating
+    var stateTransitionTime: Date?
     
-    // Get dynamic thresholds
-    func getSpeechThreshold() -> Float {
-        // Speech = baseline + 2 standard deviations OR 2x baseline (whichever is larger)
-        return max(
-            longTermAverage + (2.0 * standardDeviation),
-            longTermAverage * 2.0
-        )
-    }
-    
-    func getSilenceThreshold() -> Float {
-        // Silence = baseline + 0.5 standard deviations
-        return longTermAverage + (0.5 * standardDeviation)
-    }
+    // Configuration
+    let speechMultiplier: Float = 2.0      // Speech must be 2x background
+    let silenceMultiplier: Float = 1.3     // Silence is 1.3x background
+    let minSpeechThreshold: Float = 0.01   // Absolute minimum
+    let maxSpeechThreshold: Float = 0.1    // Absolute maximum
+    let shortTermAlpha: Float = 0.1        // EWMA factor for short-term
+    let longTermAlpha: Float = 0.01        // EWMA factor for long-term
 }
-```
 
-## 2. Relative Detection Algorithm
-
-```swift
 enum DetectionState {
-    case calibrating        // Initial noise floor calibration
-    case waitingForSpeech  // Monitoring for speech
-    case detectingSpeech   // Active speech detected
-    case trailingSilence   // Speech ended, waiting for silence duration
+    case calibrating
+    case waitingForSpeech
+    case detectingSpeech
+    case trailingSilence
 }
+```
 
-class DynamicSilenceDetector {
-    private var state: DetectionState = .calibrating
-    private var noiseTracker = AdaptiveNoiseTracker()
-    private var speechStartTime: Date?
-    private var silenceStartTime: Date?
-    private var lastRMS: Float = 0.0
-    private var consecutiveHighSamples = 0
-    private var consecutiveLowSamples = 0
-    
-    // Configurable parameters
-    var calibrationDuration: TimeInterval = 0.5
-    var minSpeechDuration: TimeInterval = 0.1    // Avoid micro-spikes
-    var silenceDuration: TimeInterval = 0.5       // Reduced from 0.8s
-    var confirmationSamples: Int = 3              // Samples needed to confirm state change
-    
-    func process(rms: Float, timestamp: Date) -> DetectionResult {
-        noiseTracker.update(rms: rms)
-        
-        // Get dynamic thresholds
-        let speechThreshold = noiseTracker.getSpeechThreshold()
-        let silenceThreshold = noiseTracker.getSilenceThreshold()
-        
-        // Calculate rate of change (helps detect sharp transitions)
-        let rmsChange = abs(rms - lastRMS)
-        lastRMS = rms
-        
-        switch state {
-        case .calibrating:
-            // Initial calibration period
-            if timestamp.timeIntervalSince(startTime) >= calibrationDuration {
-                state = .waitingForSpeech
-            }
-            
-        case .waitingForSpeech:
-            if rms >= speechThreshold {
-                consecutiveHighSamples += 1
-                if consecutiveHighSamples >= confirmationSamples {
-                    state = .detectingSpeech
-                    speechStartTime = timestamp
-                    consecutiveHighSamples = 0
-                }
-            } else {
-                consecutiveHighSamples = 0
-            }
-            
-        case .detectingSpeech:
-            if rms < silenceThreshold {
-                consecutiveLowSamples += 1
-                if consecutiveLowSamples >= confirmationSamples {
-                    // Check if speech was long enough
-                    if let start = speechStartTime, 
-                       timestamp.timeIntervalSince(start) >= minSpeechDuration {
-                        state = .trailingSilence
-                        silenceStartTime = timestamp
-                    } else {
-                        // Too short, probably noise
-                        state = .waitingForSpeech
-                    }
-                    consecutiveLowSamples = 0
-                }
-            } else {
-                consecutiveLowSamples = 0
-            }
-            
-        case .trailingSilence:
-            if rms >= speechThreshold {
-                // Speech resumed
-                state = .detectingSpeech
-                silenceStartTime = nil
-            } else if let start = silenceStartTime,
-                      timestamp.timeIntervalSince(start) >= silenceDuration {
-                // Silence confirmed - process chunk
-                state = .waitingForSpeech
-                return .chunkReady
-            }
+### Adaptive Detection Algorithm
+
+```swift
+private func updateAdaptiveThresholds(rms: Float) {
+    // Update moving averages based on state
+    switch adaptive.detectionState {
+    case .calibrating:
+        adaptive.calibrationSamples.append(rms)
+        if adaptive.calibrationSamples.count >= 25 { // ~0.5s at typical buffer rate
+            let avgNoise = adaptive.calibrationSamples.reduce(0, +) / Float(adaptive.calibrationSamples.count)
+            adaptive.shortTermAverage = avgNoise
+            adaptive.longTermAverage = avgNoise
+            adaptive.isCalibrated = true
+            adaptive.detectionState = .waitingForSpeech
+            updateThresholds()
         }
         
-        return .continue
+    case .waitingForSpeech, .trailingSilence:
+        // Update background noise estimates during silence
+        adaptive.shortTermAverage = (adaptive.shortTermAlpha * rms) + 
+                                   ((1 - adaptive.shortTermAlpha) * adaptive.shortTermAverage)
+        adaptive.longTermAverage = (adaptive.longTermAlpha * rms) + 
+                                  ((1 - adaptive.longTermAlpha) * adaptive.longTermAverage)
+        updateThresholds()
+        
+    case .detectingSpeech:
+        // Don't update background during speech
+        break
     }
 }
-```
 
-## 3. Enhanced Noise Statistics
-
-```swift
-extension AdaptiveNoiseTracker {
-    // Use exponentially weighted moving average for smooth adaptation
-    mutating func updateStatistics() {
-        guard rmsHistory.count > 0 else { return }
-        
-        // Short-term average (last 1 second = ~16 samples)
-        let shortSamples = Array(rmsHistory.suffix(16))
-        shortTermAverage = shortSamples.reduce(0, +) / Float(shortSamples.count)
-        
-        // Long-term average (all samples, up to 10 seconds)
-        let allSamples = Array(rmsHistory)
-        longTermAverage = allSamples.reduce(0, +) / Float(allSamples.count)
-        
-        // Standard deviation for variability
-        let variance = allSamples.map { pow($0 - longTermAverage, 2) }.reduce(0, +) / Float(allSamples.count)
-        standardDeviation = sqrt(variance)
-        
-        // Noise floor (5th percentile)
-        let sorted = allSamples.sorted()
-        let index = Int(Float(sorted.count) * 0.05)
-        noiseFloor = sorted[index]
-    }
-}
-```
-
-## 4. Integration with AudioEngine
-
-```swift
-// In AudioEngine.swift
-class AudioEngine {
-    private let dynamicDetector = DynamicSilenceDetector()
+private func updateThresholds() {
+    // Use the higher of short and long term averages for stability
+    let backgroundNoise = max(adaptive.shortTermAverage, adaptive.longTermAverage)
     
-    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        let rms = calculateRMS(buffer: buffer)
+    // Calculate adaptive thresholds
+    let speechThreshold = backgroundNoise * adaptive.speechMultiplier
+    let silenceThreshold = backgroundNoise * adaptive.silenceMultiplier
+    
+    // Apply limits
+    adaptive.currentSpeechThreshold = max(adaptive.minSpeechThreshold, 
+                                         min(speechThreshold, adaptive.maxSpeechThreshold))
+    adaptive.currentSilenceThreshold = max(backgroundNoise * 1.1, // At least 10% above background
+                                          min(silenceThreshold, adaptive.currentSpeechThreshold * 0.8))
+}
+```
+
+### State Transition Logic
+
+```swift
+private func processAdaptiveDetection(rms: Float) {
+    guard adaptive.isCalibrated else {
+        updateAdaptiveThresholds(rms)
+        return
+    }
+    
+    let now = Date()
+    
+    switch adaptive.detectionState {
+    case .waitingForSpeech:
+        if rms >= adaptive.currentSpeechThreshold {
+            // Speech onset detected
+            adaptive.detectionState = .detectingSpeech
+            adaptive.stateTransitionTime = now
+            hasDetectedSpeech = true
+            silenceStartTime = nil
+            
+            // Log for debugging
+            print("Speech detected: RMS \(rms) > threshold \(adaptive.currentSpeechThreshold)")
+        } else {
+            // Continue updating background noise
+            updateAdaptiveThresholds(rms)
+        }
         
-        // Use dynamic detection
-        let result = dynamicDetector.process(rms: rms, timestamp: Date())
+    case .detectingSpeech:
+        if rms < adaptive.currentSilenceThreshold {
+            // Potential speech end
+            adaptive.detectionState = .trailingSilence
+            adaptive.stateTransitionTime = now
+            silenceStartTime = now
+        }
         
-        switch result {
-        case .chunkReady:
-            // Process the accumulated audio chunk
+    case .trailingSilence:
+        if rms >= adaptive.currentSpeechThreshold {
+            // Speech resumed, back to detecting
+            adaptive.detectionState = .detectingSpeech
+            adaptive.stateTransitionTime = now
+            silenceStartTime = nil
+        } else if let transitionTime = adaptive.stateTransitionTime,
+                  now.timeIntervalSince(transitionTime) >= Config.silenceDuration {
+            // Confirmed silence duration met
             processSilenceDetected()
-        case .continue:
-            // Keep accumulating audio
-            appendToCurrentChunk(buffer)
+            adaptive.detectionState = .waitingForSpeech
+            adaptive.stateTransitionTime = now
+            
+            // Resume background adaptation
+            updateAdaptiveThresholds(rms)
+        } else {
+            // Still in trailing silence, update background
+            updateAdaptiveThresholds(rms)
         }
+        
+    default:
+        break
     }
 }
 ```
 
-## 5. Adaptive Parameters
-
-### Environment-Specific Adjustments
+### Integration with Continuous Mode
 
 ```swift
-struct AdaptiveParameters {
-    // Multipliers adjust based on noise characteristics
-    var speechMultiplier: Float = 2.0      // How much above baseline for speech
-    var silenceMultiplier: Float = 1.3     // How much above baseline for silence
+private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+    // ... existing RMS calculation ...
     
-    // Adjust based on environment
-    mutating func adaptToEnvironment(noiseStats: NoiseStatistics) {
-        if noiseStats.standardDeviation < 0.005 {
-            // Very quiet environment - more sensitive
-            speechMultiplier = 1.5
-            silenceMultiplier = 1.2
-        } else if noiseStats.standardDeviation > 0.02 {
-            // Noisy environment - less sensitive
-            speechMultiplier = 2.5
-            silenceMultiplier = 1.5
+    if isContinuousMode {
+        currentChunkBuffer.append(convertedData)
+        
+        // Use adaptive detection
+        processAdaptiveDetection(rms)
+        
+        // Check for maximum chunk duration
+        if adaptive.detectionState == .detectingSpeech,
+           let chunkStart = chunkStartTime,
+           Date().timeIntervalSince(chunkStart) >= Config.maxAudioChunkDuration {
+            processChunkTimeout()
         }
+    } else {
+        // Normal recording mode remains unchanged
+        audioBuffer.append(convertedData)
+        audioDataPublisher.send(convertedData)
     }
 }
 ```
 
-## 6. Advanced Features
+### Additional Features
 
-### A. Spectral Analysis Option
+1. **Noise Spike Protection**
+   - Ignore sudden loud noises (door slams, coughs)
+   - Require sustained levels for state transitions
 
-```swift
-// For even better detection, analyze frequency content
-func analyzeSpectrum(buffer: AVAudioPCMBuffer) -> Bool {
-    // Human speech is typically 85-255 Hz (fundamental frequency)
-    // Check if energy is concentrated in speech frequencies
-    let fft = performFFT(buffer)
-    let speechBandEnergy = fft.energyInRange(85...255)
-    let totalEnergy = fft.totalEnergy
-    
-    return (speechBandEnergy / totalEnergy) > 0.4
-}
-```
+2. **Confidence Metrics**
+   - Track speech-to-noise ratio
+   - Provide confidence score with chunks
 
-### B. Machine Learning Option
-
-```swift
-// Use Core ML for advanced voice activity detection
-class MLVoiceDetector {
-    private let model: VoiceActivityDetection // Core ML model
-    
-    func detectVoiceActivity(features: AudioFeatures) -> Float {
-        // Returns probability 0.0-1.0
-        return model.prediction(features).voiceProbability
-    }
-}
-```
+3. **Debug Mode**
+   - Real-time visualization of thresholds
+   - Log state transitions and threshold updates
 
 ## Benefits
 
-1. **Adaptive to Environment**: Works in quiet rooms and noisy cafes
-2. **No False Triggers**: Background noise changes don't trigger commands
-3. **Consistent Detection**: Relative thresholds ensure reliable speech detection
-4. **Smooth Operation**: Statistical approach prevents abrupt changes
-5. **Configurable**: Easy to tune for different use cases
+1. **Adaptive to Environment**
+   - Works in quiet rooms and noisy cafes
+   - Adjusts as conditions change
 
-## Implementation Strategy
+2. **Reduced False Positives**
+   - No "no command detected" from background noise
+   - Better silence detection between commands
 
-### Phase 1: Basic Dynamic Detection
-- Implement rolling average baseline
-- Simple relative thresholds (2x for speech, 1.3x for silence)
-- Test in various environments
+3. **Improved Speech Detection**
+   - Captures soft speech in quiet environments
+   - Handles loud speech in noisy environments
 
-### Phase 2: Statistical Enhancement
-- Add standard deviation tracking
-- Implement confirmation sample requirements
-- Add rate-of-change detection
-
-### Phase 3: Advanced Features
-- Spectral analysis for better accuracy
-- ML-based detection option
-- Per-user calibration profiles
+4. **User Experience**
+   - More reliable continuous mode
+   - Less frustration from missed commands
 
 ## Configuration
 
+New Config.swift parameters:
 ```swift
-// In Config.swift
-struct DynamicDetectionConfig {
-    // Baseline tracking
-    static let shortTermWindowSeconds: TimeInterval = 1.0
-    static let longTermWindowSeconds: TimeInterval = 10.0
-    
-    // Detection multipliers
-    static let defaultSpeechMultiplier: Float = 2.0
-    static let defaultSilenceMultiplier: Float = 1.3
-    
-    // Timing
-    static let calibrationDuration: TimeInterval = 0.5
-    static let minSpeechDuration: TimeInterval = 0.1
-    static let silenceDuration: TimeInterval = 0.5
-    
-    // Confirmation
-    static let confirmationSamples: Int = 3
-    
-    // Adaptive bounds
-    static let minSpeechThreshold: Float = 0.01  // Never go below this
-    static let maxSpeechThreshold: Float = 0.5   // Never go above this
-}
+// Adaptive Detection Configuration
+static let adaptiveSpeechMultiplier: Float = 2.0     // Speech must be Nx background
+static let adaptiveSilenceMultiplier: Float = 1.3    // Silence threshold multiplier
+static let adaptiveMinSpeechThreshold: Float = 0.01  // Absolute minimum
+static let adaptiveMaxSpeechThreshold: Float = 0.1   // Absolute maximum
+static let adaptiveCalibrationDuration: TimeInterval = 0.5
+static let adaptiveShortTermWindow: Float = 0.1      // EWMA alpha for 1s window
+static let adaptiveLongTermWindow: Float = 0.01      // EWMA alpha for 10s window
 ```
 
 ## Testing Strategy
 
-1. **Quiet Room Test**: Baseline ~0.001, speech at 0.01
-2. **Office Environment**: Baseline ~0.01, speech at 0.05
-3. **Noisy Cafe**: Baseline ~0.03, speech at 0.1
-4. **Dynamic Scenarios**: TV in background, music playing
-5. **Edge Cases**: Sudden loud noises, gradual volume changes
+1. **Quiet Environment**
+   - Library/bedroom
+   - Verify soft speech detection
 
-This approach ensures robust detection across all environments while preventing both false positives and false negatives.
+2. **Noisy Environment**
+   - Coffee shop/street
+   - Verify noise rejection
+
+3. **Variable Conditions**
+   - AC cycling on/off
+   - Music playing/stopping
+
+4. **Edge Cases**
+   - Very loud background noise
+   - Nearly silent speech
+   - Sudden noise spikes
+
+## Migration Path
+
+1. Add adaptive detection alongside existing system
+2. Add debug toggle to compare both methods
+3. Extensive testing in various environments
+4. Full migration once validated
