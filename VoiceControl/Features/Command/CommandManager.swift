@@ -5,13 +5,14 @@ import SwiftUI
 enum HUDState: Equatable {
     case idle
     case listening
+    case continuousListening  // New state for continuous mode
     case processing
     case disambiguating
     case error(Error)
     
     static func == (lhs: HUDState, rhs: HUDState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle), (.listening, .listening), (.processing, .processing), (.disambiguating, .disambiguating):
+        case (.idle, .idle), (.listening, .listening), (.processing, .processing), (.disambiguating, .disambiguating), (.continuousListening, .continuousListening):
             return true
         case (.error(_), .error(_)):
             return true
@@ -28,6 +29,7 @@ class CommandManager: ObservableObject {
     @Published var currentMatches: [CommandMatch] = []
     @Published var error: Error?
     @Published var lastTranscription = ""
+    @Published var isContinuousMode = false
     
     private let audioEngine = AudioEngine()
     private let whisperService = WhisperService()
@@ -36,6 +38,8 @@ class CommandManager: ObservableObject {
     private var hotkeyManager: HotkeyManager?
     
     private var cancellables = Set<AnyCancellable>()
+    private var disambiguationTimer: Timer?
+    private var disambiguationListeningTimer: Timer?
     
     init() {
         setupBindings()
@@ -46,6 +50,13 @@ class CommandManager: ObservableObject {
         audioEngine.recordingCompletePublisher
             .sink { [weak self] audioData in
                 self?.processAudioData(audioData)
+            }
+            .store(in: &cancellables)
+        
+        // Subscribe to audio chunks for continuous mode
+        audioEngine.audioChunkPublisher
+            .sink { [weak self] audioChunk in
+                self?.processAudioChunk(audioChunk)
             }
             .store(in: &cancellables)
         
@@ -102,7 +113,11 @@ class CommandManager: ObservableObject {
             stopVoiceCommand()
         } else {
             print("   Starting voice command...")
-            startVoiceCommand()
+            if Config.continuousMode {
+                startContinuousMode()
+            } else {
+                startVoiceCommand()
+            }
         }
     }
     
@@ -113,6 +128,26 @@ class CommandManager: ObservableObject {
     }
     
     func stopVoiceCommand() {
+        stopListening()
+        hudState = .idle
+    }
+    
+    func startContinuousMode() {
+        guard !isListening else { return }
+        
+        isContinuousMode = true
+        isListening = true
+        hudState = .continuousListening
+        recognizedText = ""
+        currentMatches = []
+        error = nil
+        
+        print("DEBUG: Starting continuous recording...")
+        audioEngine.startContinuousRecording()
+    }
+    
+    func stopContinuousMode() {
+        isContinuousMode = false
         stopListening()
         hudState = .idle
     }
@@ -161,6 +196,13 @@ class CommandManager: ObservableObject {
         whisperService.startTranscription(audioData: audioData)
     }
     
+    private func processAudioChunk(_ audioChunk: Data) {
+        print("DEBUG: Processing audio chunk of size: \(audioChunk.count) bytes")
+        // Temporarily change state to processing while keeping continuous mode active
+        hudState = .processing
+        whisperService.startTranscription(audioData: audioChunk)
+    }
+    
     private func handleTranscriptionResult(_ text: String) {
         // Check if we got empty transcription
         if text.isEmpty {
@@ -177,13 +219,24 @@ class CommandManager: ObservableObject {
         recognizedText = text
         lastTranscription = text
         
+        // If we're in disambiguation state, check for number selection
+        if hudState == .disambiguating {
+            handleDisambiguationVoiceInput(text)
+            return
+        }
+        
         let matches = commandMatcher.findMatches(for: text)
         currentMatches = Array(matches.prefix(3))
         
         if let bestMatch = matches.first {
             if bestMatch.confidence >= Config.fuzzyMatchThreshold {
                 executeCommand(bestMatch.command)
-                resetToIdle()
+                if isContinuousMode {
+                    // Return to continuous listening after executing
+                    hudState = .continuousListening
+                } else {
+                    resetToIdle()
+                }
             } else if matches.count > 1 {
                 showDisambiguation()
             } else {
@@ -196,6 +249,49 @@ class CommandManager: ObservableObject {
     
     private func showDisambiguation() {
         hudState = .disambiguating
+        
+        // Set up disambiguation timeout
+        disambiguationTimer?.invalidate()
+        disambiguationTimer = Timer.scheduledTimer(withTimeInterval: Config.disambiguationTimeout, repeats: false) { [weak self] _ in
+            self?.disambiguationTimeout()
+        }
+        
+        // Start listening again after a brief delay
+        disambiguationListeningTimer?.invalidate()
+        disambiguationListeningTimer = Timer.scheduledTimer(withTimeInterval: Config.disambiguationListeningDelay, repeats: false) { [weak self] _ in
+            self?.startDisambiguationListening()
+        }
+    }
+    
+    private func startDisambiguationListening() {
+        // Keep audio engine running if in continuous mode, otherwise start it
+        if !audioEngine.isRecording {
+            audioEngine.startRecording()
+        }
+    }
+    
+    private func handleDisambiguationVoiceInput(_ text: String) {
+        let lowercased = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Check for number words or digits
+        let numberMap = ["one": 0, "1": 0, "two": 1, "2": 1, "three": 2, "3": 2]
+        
+        if let index = numberMap[lowercased] {
+            selectMatch(at: index)
+            disambiguationTimer?.invalidate()
+            disambiguationListeningTimer?.invalidate()
+        }
+    }
+    
+    private func disambiguationTimeout() {
+        disambiguationTimer?.invalidate()
+        disambiguationListeningTimer?.invalidate()
+        
+        if isContinuousMode {
+            hudState = .continuousListening
+        } else {
+            resetToIdle()
+        }
     }
     
     func selectMatch(at index: Int) {
@@ -203,7 +299,14 @@ class CommandManager: ObservableObject {
         
         let selectedMatch = currentMatches[index]
         executeCommand(selectedMatch.command)
-        resetToIdle()
+        
+        if isContinuousMode {
+            hudState = .continuousListening
+            currentMatches = []
+            recognizedText = ""
+        } else {
+            resetToIdle()
+        }
     }
     
     private func executeCommand(_ command: Command) {
@@ -249,8 +352,13 @@ class CommandManager: ObservableObject {
         error = commandError
         hudState = .error(commandError)
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.resetToIdle()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            if self?.isContinuousMode == true {
+                self?.hudState = .continuousListening
+                self?.error = nil
+            } else {
+                self?.resetToIdle()
+            }
         }
     }
     
@@ -258,14 +366,19 @@ class CommandManager: ObservableObject {
         self.error = error
         hudState = .error(error)
         
-        // Ensure we're not stuck in listening state
-        if isListening {
+        // Don't stop recording in continuous mode
+        if !isContinuousMode && isListening {
             isListening = false
             audioEngine.stopRecording()
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.resetToIdle()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            if self?.isContinuousMode == true {
+                self?.hudState = .continuousListening
+                self?.error = nil
+            } else {
+                self?.resetToIdle()
+            }
         }
     }
 }

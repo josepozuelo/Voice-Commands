@@ -12,9 +12,17 @@ class AudioEngine: NSObject, ObservableObject {
     
     var audioDataPublisher = PassthroughSubject<Data, Never>()
     var recordingCompletePublisher = PassthroughSubject<Data, Never>()
+    var audioChunkPublisher = PassthroughSubject<Data, Never>()  // For continuous mode chunks
     
     private let bufferSize = AVAudioFrameCount(Config.audioBufferSize)
     private let sampleRate = Config.audioSampleRate
+    
+    // Continuous mode properties
+    private var isContinuousMode = false
+    private var silenceStartTime: Date?
+    private var chunkStartTime: Date?
+    private var currentChunkBuffer = Data()
+    private var silenceTimer: Timer?
     
     override init() {
         super.init()
@@ -39,6 +47,41 @@ class AudioEngine: NSObject, ObservableObject {
         guard !isRecording else { return }
         
         audioBuffer.removeAll()
+        isContinuousMode = false
+        
+        audioEngine = AVAudioEngine()
+        guard let audioEngine = audioEngine else { return }
+        
+        inputNode = audioEngine.inputNode
+        guard let inputNode = inputNode else { return }
+        
+        // Use the input node's native format to avoid format mismatch
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(
+            onBus: 0,
+            bufferSize: bufferSize,
+            format: inputFormat
+        ) { [weak self] buffer, _ in
+            self?.processAudioBuffer(buffer)
+        }
+        
+        do {
+            try audioEngine.start()
+            isRecording = true
+        } catch {
+            print("Failed to start audio engine: \(error)")
+        }
+    }
+    
+    func startContinuousRecording() {
+        guard !isRecording else { return }
+        
+        audioBuffer.removeAll()
+        currentChunkBuffer.removeAll()
+        isContinuousMode = true
+        chunkStartTime = Date()
+        silenceStartTime = nil
         
         audioEngine = AVAudioEngine()
         guard let audioEngine = audioEngine else { return }
@@ -68,14 +111,22 @@ class AudioEngine: NSObject, ObservableObject {
     func stopRecording() {
         guard isRecording else { return }
         
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        
         inputNode?.removeTap(onBus: 0)
         audioEngine?.stop()
         audioEngine = nil
         inputNode = nil
         
         isRecording = false
+        isContinuousMode = false
         
-        if !audioBuffer.isEmpty {
+        if isContinuousMode && !currentChunkBuffer.isEmpty {
+            // Send any remaining chunk
+            audioChunkPublisher.send(currentChunkBuffer)
+            currentChunkBuffer.removeAll()
+        } else if !audioBuffer.isEmpty {
             recordingCompletePublisher.send(audioBuffer)
         }
     }
@@ -98,8 +149,38 @@ class AudioEngine: NSObject, ObservableObject {
         
         // Convert to target sample rate if needed
         let convertedData = convertToTargetSampleRate(buffer)
-        audioBuffer.append(convertedData)
-        audioDataPublisher.send(convertedData)
+        
+        if isContinuousMode {
+            // Add to current chunk buffer
+            currentChunkBuffer.append(convertedData)
+            
+            // Check if we're in silence
+            if rms < Config.silenceRMSThreshold {
+                // We're in silence
+                if silenceStartTime == nil {
+                    silenceStartTime = Date()
+                }
+                
+                // Check if silence duration has been met
+                if let silenceStart = silenceStartTime,
+                   Date().timeIntervalSince(silenceStart) >= Config.silenceDuration {
+                    processSilenceDetected()
+                }
+            } else {
+                // Not in silence, reset silence timer
+                silenceStartTime = nil
+            }
+            
+            // Check for maximum chunk duration
+            if let chunkStart = chunkStartTime,
+               Date().timeIntervalSince(chunkStart) >= Config.maxAudioChunkDuration {
+                processChunkTimeout()
+            }
+        } else {
+            // Normal recording mode
+            audioBuffer.append(convertedData)
+            audioDataPublisher.send(convertedData)
+        }
     }
     
     private func convertToTargetSampleRate(_ buffer: AVAudioPCMBuffer) -> Data {
@@ -137,6 +218,33 @@ class AudioEngine: NSObject, ObservableObject {
         }
         
         return Data(bytes: outputSamples, count: outputSamples.count * MemoryLayout<Float>.size)
+    }
+    
+    private func processSilenceDetected() {
+        // Check if we have enough audio for a valid chunk
+        guard currentChunkBuffer.count > 0,
+              let chunkStart = chunkStartTime,
+              Date().timeIntervalSince(chunkStart) >= Config.minAudioChunkDuration else {
+            return
+        }
+        
+        // Send the chunk
+        audioChunkPublisher.send(currentChunkBuffer)
+        
+        // Reset for next chunk
+        currentChunkBuffer.removeAll()
+        chunkStartTime = Date()
+        silenceStartTime = nil
+    }
+    
+    private func processChunkTimeout() {
+        // Force send chunk when max duration reached
+        if !currentChunkBuffer.isEmpty {
+            audioChunkPublisher.send(currentChunkBuffer)
+            currentChunkBuffer.removeAll()
+            chunkStartTime = Date()
+            silenceStartTime = nil
+        }
     }
     
     func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {

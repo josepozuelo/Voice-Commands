@@ -35,6 +35,17 @@ struct Config {
     static let silenceThreshold: TimeInterval = 1.0
     static let fuzzyMatchThreshold: Double = 0.85
     
+    // Continuous Mode Configuration
+    static let continuousMode = true  // Toggle for continuous mode
+    static let silenceRMSThreshold: Float = 0.01  // Audio level threshold for silence
+    static let silenceDuration: TimeInterval = 0.8  // Duration of silence to trigger processing
+    static let minAudioChunkDuration: TimeInterval = 0.5  // Minimum audio chunk size
+    static let maxAudioChunkDuration: TimeInterval = 10.0  // Maximum before forced processing
+    
+    // Disambiguation Configuration
+    static let disambiguationTimeout: TimeInterval = 8.0  // Time before dismissing disambiguation
+    static let disambiguationListeningDelay: TimeInterval = 0.5  // Brief delay before listening again
+    
     static let hudBottomMargin: CGFloat = 20
     static let hudMaxWidth: CGFloat = 600
     static let hudAnimationDuration: TimeInterval = 0.2
