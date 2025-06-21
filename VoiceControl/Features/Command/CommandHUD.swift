@@ -13,6 +13,8 @@ struct CommandHUD: View {
                 idleStateView
             case .listening:
                 listeningView
+            case .continuousListening:
+                continuousListeningView
             case .processing:
                 processingView
             case .disambiguating:
@@ -99,6 +101,35 @@ struct CommandHUD: View {
         }
     }
     
+    private var continuousListeningView: some View {
+        HStack(spacing: 12) {
+            continuousModeIcon
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Continuous Mode")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text("Listening for commands...")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Stop continuous mode button
+            Button(action: {
+                commandManager.stopContinuousMode()
+            }) {
+                Image(systemName: "stop.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.plain)
+            .help("Stop Continuous Mode")
+        }
+    }
+    
     private var processingView: some View {
         HStack(spacing: 12) {
             ProgressView()
@@ -131,6 +162,19 @@ struct CommandHUD: View {
                 
                 Spacer()
                 
+                HStack(spacing: 8) {
+                    // Listening indicator
+                    Image(systemName: "mic.fill")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .scaleEffect(1.2)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: true)
+                    
+                    Text("Say a number")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
                 Button(action: {
                     commandManager.stopVoiceCommand()
                 }) {
@@ -152,6 +196,11 @@ struct CommandHUD: View {
             ForEach(Array(commandManager.currentMatches.enumerated()), id: \.offset) { index, match in
                 matchRow(match: match, index: index, isSelected: index == selectedIndex)
             }
+            
+            Text("Say a number or click to select • Press Enter for option 1")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.top, 4)
         }
     }
     
@@ -244,6 +293,26 @@ struct CommandHUD: View {
         .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: commandManager.isListening)
     }
     
+    private var continuousModeIcon: some View {
+        ZStack {
+            // Pulsing circles to indicate continuous listening
+            Circle()
+                .stroke(Color.green.opacity(0.3), lineWidth: 2)
+                .frame(width: 50, height: 50)
+                .scaleEffect(1.2)
+                .opacity(0.5)
+                .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false), value: true)
+            
+            Circle()
+                .fill(Color.green.opacity(0.8))
+                .frame(width: 40, height: 40)
+            
+            Image(systemName: "infinity")
+                .foregroundColor(.white)
+                .font(.title2)
+        }
+    }
+    
     // MARK: - Layout Properties
     
     private var hudPadding: EdgeInsets {
@@ -307,6 +376,7 @@ struct CommandHUDWindow: NSViewRepresentable {
 
 class CommandHUDWindowController: NSWindowController {
     private var commandManager: CommandManager
+    private var eventMonitor: Any?
     
     init(commandManager: CommandManager) {
         self.commandManager = commandManager
@@ -323,6 +393,7 @@ class CommandHUDWindowController: NSWindowController {
         setupWindow()
         setupContent()
         observeCommandManager()
+        setupEscapeKeyMonitor()
     }
     
     required init?(coder: NSCoder) {
@@ -374,8 +445,10 @@ class CommandHUDWindowController: NSWindowController {
             targetSize = NSSize(width: 300, height: 60)
         case .listening, .processing:
             targetSize = NSSize(width: 400, height: 80)
+        case .continuousListening:
+            targetSize = NSSize(width: 400, height: 80)
         case .disambiguating:
-            targetSize = NSSize(width: 450, height: 200)
+            targetSize = NSSize(width: 500, height: 220)
         case .error:
             targetSize = NSSize(width: 500, height: 100)
         }
@@ -404,5 +477,23 @@ class CommandHUDWindowController: NSWindowController {
         let y = screenFrame.minY + Config.hudBottomMargin
         
         window.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+    
+    private func setupEscapeKeyMonitor() {
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // 53 is the key code for Escape
+                if self?.commandManager.hudState != .idle {
+                    self?.commandManager.cancelCurrentOperation()
+                    return nil // Consume the event
+                }
+            }
+            return event
+        }
+    }
+    
+    deinit {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
     }
 }
