@@ -15,7 +15,8 @@
       "Bash(codesign:*)",
       "Bash(find:*)",
       "Bash(find:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

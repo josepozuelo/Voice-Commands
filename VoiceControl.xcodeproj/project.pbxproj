@@ -22,6 +22,10 @@
 		A1000012000000000000012 /* commands.json in Resources */ = {isa = PBXBuildFile; fileRef = A2000012000000000000012 /* commands.json */; };
 		A1000013000000000000013 /* AudioPreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016000000000000016 /* AudioPreprocessor.swift */; };
 		A1000014000000000000014 /* VADSilenceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017000000000000017 /* VADSilenceDetector.swift */; };
+		A1000015000000000000015 /* VADChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018000000000000018 /* VADChunker.swift */; };
+		A1000016000000000000016 /* CommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019000000000000019 /* CommandIntent.swift */; };
+		A1000017000000000000017 /* CommandClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020000000000000020 /* CommandClassifier.swift */; };
+		A1000018000000000000018 /* CommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021000000000000021 /* CommandRouter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +48,10 @@
 		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2000016000000000000016 /* AudioPreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessor.swift; sourceTree = "<group>"; };
 		A2000017000000000000017 /* VADSilenceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADSilenceDetector.swift; sourceTree = "<group>"; };
+		A2000018000000000000018 /* VADChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADChunker.swift; sourceTree = "<group>"; };
+		A2000019000000000000019 /* CommandIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandIntent.swift; sourceTree = "<group>"; };
+		A2000020000000000000020 /* CommandClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandClassifier.swift; sourceTree = "<group>"; };
+		A2000021000000000000021 /* CommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRouter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,6 +113,9 @@
 				A2000004000000000000004 /* AudioEngine.swift */,
 				A2000016000000000000016 /* AudioPreprocessor.swift */,
 				A2000017000000000000017 /* VADSilenceDetector.swift */,
+				A2000018000000000000018 /* VADChunker.swift */,
+				A2000020000000000000020 /* CommandClassifier.swift */,
+				A2000021000000000000021 /* CommandRouter.swift */,
 				A2000005000000000000005 /* WhisperService.swift */,
 			);
 			path = Core;
@@ -122,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				A2000009000000000000009 /* Command.swift */,
+				A2000019000000000000019 /* CommandIntent.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -236,6 +248,10 @@
 				DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */,
 				A1000013000000000000013 /* AudioPreprocessor.swift in Sources */,
 				A1000014000000000000014 /* VADSilenceDetector.swift in Sources */,
+				A1000015000000000000015 /* VADChunker.swift in Sources */,
+				A1000016000000000000016 /* CommandIntent.swift in Sources */,
+				A1000017000000000000017 /* CommandClassifier.swift in Sources */,
+				A1000018000000000000018 /* CommandRouter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

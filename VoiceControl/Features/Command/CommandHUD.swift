@@ -17,8 +17,8 @@ struct CommandHUD: View {
                 continuousListeningView
             case .processing:
                 processingView
-            case .disambiguating:
-                disambiguationView
+            case .classifying:
+                classifyingView
             case .error(let error):
                 errorView(error)
             }
@@ -160,27 +160,18 @@ struct CommandHUD: View {
         }
     }
     
-    private var disambiguationView: some View {
+    private var classifyingView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Did you mean:")
+                Text("Classifying command...")
                     .font(.headline)
                     .foregroundColor(.primary)
                 
                 Spacer()
                 
-                HStack(spacing: 8) {
-                    // Listening indicator
-                    Image(systemName: "mic.fill")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                        .scaleEffect(1.2)
-                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: true)
-                    
-                    Text("Say a number")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(0.8)
                 
                 Button(action: {
                     commandManager.stopVoiceCommand()
@@ -200,55 +191,20 @@ struct CommandHUD: View {
                     .padding(.bottom, 4)
             }
             
-            ForEach(Array(commandManager.currentMatches.enumerated()), id: \.offset) { index, match in
-                matchRow(match: match, index: index, isSelected: index == selectedIndex)
+            if let command = commandManager.currentCommand {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                    
+                    Text("Intent: \(command.intent.rawValue.capitalized)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            
-            Text("Say a number or click to select • Press Enter for option 1")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .padding(.top, 4)
         }
     }
     
-    private func matchRow(match: CommandMatch, index: Int, isSelected: Bool) -> some View {
-        HStack {
-            Text("\(index + 1)")
-                .font(.caption)
-                .foregroundColor(.white)
-                .frame(width: 20, height: 20)
-                .background(
-                    Circle()
-                        .fill(isSelected ? Color.accentColor : Color.gray.opacity(0.6))
-                )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(match.matchedPhrase)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                
-                Text(match.command.category.rawValue.capitalized)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Text("\(Int(match.confidence * 100))%")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            commandManager.selectMatch(at: index)
-        }
-    }
     
     private func errorView(_ error: Error) -> some View {
         HStack(spacing: 12) {
@@ -461,8 +417,8 @@ class CommandHUDWindowController: NSWindowController {
             targetSize = NSSize(width: 400, height: 80)
         case .continuousListening:
             targetSize = NSSize(width: 400, height: 80)
-        case .disambiguating:
-            targetSize = NSSize(width: 500, height: 220)
+        case .classifying:
+            targetSize = NSSize(width: 500, height: 140)
         case .error:
             targetSize = NSSize(width: 500, height: 100)
         }

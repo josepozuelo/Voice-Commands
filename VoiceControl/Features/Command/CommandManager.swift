@@ -7,12 +7,12 @@ enum HUDState: Equatable {
     case listening
     case continuousListening  // New state for continuous mode
     case processing
-    case disambiguating
+    case classifying  // Replaced disambiguating with classifying
     case error(Error)
     
     static func == (lhs: HUDState, rhs: HUDState) -> Bool {
         switch (lhs, rhs) {
-        case (.idle, .idle), (.listening, .listening), (.processing, .processing), (.disambiguating, .disambiguating), (.continuousListening, .continuousListening):
+        case (.idle, .idle), (.listening, .listening), (.processing, .processing), (.classifying, .classifying), (.continuousListening, .continuousListening):
             return true
         case (.error(_), .error(_)):
             return true
@@ -26,25 +26,30 @@ class CommandManager: ObservableObject {
     @Published var hudState: HUDState = .idle
     @Published var isListening = false
     @Published var recognizedText = ""
-    @Published var currentMatches: [CommandMatch] = []
+    @Published var currentCommand: CommandJSON?
     @Published var error: Error?
     @Published var lastTranscription = ""
     @Published var isContinuousMode = false
     
     private let audioEngine = AudioEngine()
     private let whisperService = WhisperService()
-    private let commandMatcher = CommandMatcher()
+    private let commandClassifier = CommandClassifier()
     private let accessibilityBridge = AccessibilityBridge()
+    private let commandRouter: CommandRouter
     private var hotkeyManager: HotkeyManager?
     
     private var cancellables = Set<AnyCancellable>()
     private var isProcessingChunk = false  // Guard against concurrent chunk processing
-    private var disambiguationTimer: Timer?
-    private var disambiguationListeningTimer: Timer?
     
     init() {
+        self.commandRouter = CommandRouter(accessibilityBridge: accessibilityBridge)
         setupBindings()
         setupPermissions()
+        
+        // Setup router feedback
+        commandRouter.onFeedback = { [weak self] message in
+            self?.showError(message)
+        }
     }
     
     private func setupBindings() {
@@ -140,7 +145,7 @@ class CommandManager: ObservableObject {
         isListening = true
         hudState = .continuousListening
         recognizedText = ""
-        currentMatches = []
+        currentCommand = nil
         error = nil
         
         print("DEBUG: Starting continuous recording...")
@@ -154,10 +159,6 @@ class CommandManager: ObservableObject {
     }
     
     func cancelCurrentOperation() {
-        // Cancel any active timers
-        disambiguationTimer?.invalidate()
-        disambiguationListeningTimer?.invalidate()
-        
         // Stop recording if active
         if isListening {
             if isContinuousMode {
@@ -174,7 +175,7 @@ class CommandManager: ObservableObject {
     func retryLastCommand() {
         if !lastTranscription.isEmpty {
             hudState = .processing
-            handleTranscription(lastTranscription)
+            classifyAndExecute(lastTranscription)
         } else {
             startVoiceCommand()
         }
@@ -195,7 +196,7 @@ class CommandManager: ObservableObject {
         isListening = true
         hudState = .listening
         recognizedText = ""
-        currentMatches = []
+        currentCommand = nil
         error = nil
         
         print("DEBUG: Starting audio recording...")
@@ -219,7 +220,7 @@ class CommandManager: ObservableObject {
         print("DEBUG: Processing audio chunk of size: \(audioChunk.count) bytes")
         
         // Don't process if we're already processing or in an error state
-        guard hudState == .continuousListening || hudState == .disambiguating else {
+        guard hudState == .continuousListening else {
             print("DEBUG: Skipping chunk processing - current state: \(hudState)")
             return
         }
@@ -251,131 +252,56 @@ class CommandManager: ObservableObject {
         // Set recognized text immediately to show in HUD
         recognizedText = text
         
-        // Process non-empty transcription
-        handleTranscription(text)
+        // Process non-empty transcription with LLM
+        classifyAndExecute(text)
     }
     
-    private func handleTranscription(_ text: String) {
+    private func classifyAndExecute(_ text: String) {
         lastTranscription = text
+        hudState = .classifying
         
-        // If we're in disambiguation state, check for number selection
-        if hudState == .disambiguating {
-            handleDisambiguationVoiceInput(text)
-            return
-        }
-        
-        let matches = commandMatcher.findMatches(for: text)
-        currentMatches = Array(matches.prefix(3))
-        
-        if let bestMatch = matches.first {
-            if bestMatch.confidence >= Config.fuzzyMatchThreshold {
-                executeCommand(bestMatch.command)
-                if isContinuousMode {
-                    // Return to continuous listening after executing
-                    hudState = .continuousListening
-                    currentMatches = []
-                    // Clear recognized text immediately since it was already shown during processing
-                    recognizedText = ""
-                } else {
-                    resetToIdle()
+        Task {
+            do {
+                let command = try await commandClassifier.classify(text)
+                
+                await MainActor.run {
+                    self.currentCommand = command
+                    
+                    // Execute the command
+                    Task {
+                        do {
+                            try await self.commandRouter.route(command)
+                            
+                            await MainActor.run {
+                                if self.isContinuousMode {
+                                    // Return to continuous listening after executing
+                                    self.hudState = .continuousListening
+                                    self.currentCommand = nil
+                                    self.recognizedText = ""
+                                } else {
+                                    self.resetToIdle()
+                                }
+                            }
+                        } catch {
+                            await MainActor.run {
+                                self.handleError(error)
+                            }
+                        }
+                    }
                 }
-            } else if matches.count > 1 {
-                showDisambiguation()
-            } else {
-                showError("No matching command found for: \"\(text)\"")
+            } catch {
+                await MainActor.run {
+                    self.handleError(error)
+                }
             }
-        } else {
-            showError("No matching command found for: \"\(text)\"")
         }
     }
     
-    private func showDisambiguation() {
-        hudState = .disambiguating
-        
-        // Set up disambiguation timeout
-        disambiguationTimer?.invalidate()
-        disambiguationTimer = Timer.scheduledTimer(withTimeInterval: Config.disambiguationTimeout, repeats: false) { [weak self] _ in
-            self?.disambiguationTimeout()
-        }
-        
-        // Start listening again after a brief delay
-        disambiguationListeningTimer?.invalidate()
-        disambiguationListeningTimer = Timer.scheduledTimer(withTimeInterval: Config.disambiguationListeningDelay, repeats: false) { [weak self] _ in
-            self?.startDisambiguationListening()
-        }
-    }
     
-    private func startDisambiguationListening() {
-        // Keep audio engine running if in continuous mode, otherwise start it
-        if !audioEngine.isRecording {
-            audioEngine.startRecording()
-        }
-    }
-    
-    private func handleDisambiguationVoiceInput(_ text: String) {
-        let lowercased = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Check for number words or digits
-        let numberMap = ["one": 0, "1": 0, "two": 1, "2": 1, "three": 2, "3": 2]
-        
-        if let index = numberMap[lowercased] {
-            selectMatch(at: index)
-            disambiguationTimer?.invalidate()
-            disambiguationListeningTimer?.invalidate()
-        }
-    }
-    
-    private func disambiguationTimeout() {
-        disambiguationTimer?.invalidate()
-        disambiguationListeningTimer?.invalidate()
-        
-        if isContinuousMode {
-            hudState = .continuousListening
-        } else {
-            resetToIdle()
-        }
-    }
-    
-    func selectMatch(at index: Int) {
-        guard index < currentMatches.count else { return }
-        
-        let selectedMatch = currentMatches[index]
-        executeCommand(selectedMatch.command)
-        
-        if isContinuousMode {
-            hudState = .continuousListening
-            currentMatches = []
-            // Clear recognized text immediately since it was already shown during processing
-            recognizedText = ""
-        } else {
-            resetToIdle()
-        }
-    }
-    
-    private func executeCommand(_ command: Command) {
-        do {
-            switch command.action {
-            case .selectText(let selectionType):
-                try accessibilityBridge.selectText(matching: selectionType)
-                
-            case .moveCursor(let direction, let unit):
-                try accessibilityBridge.moveCursor(to: direction, by: unit)
-                
-            case .systemAction(let keyCommand):
-                try accessibilityBridge.executeSystemAction(keyCommand)
-                
-            case .appCommand(let appId, let command):
-                // Future implementation for app-specific commands
-                print("App command not yet implemented: \(appId) - \(command)")
-            }
-        } catch {
-            handleError(error)
-        }
-    }
     
     private func resetToIdle() {
         hudState = .idle
-        currentMatches = []
+        currentCommand = nil
         recognizedText = ""
         error = nil
         isListening = false  // Important: reset listening state

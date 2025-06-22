@@ -148,12 +148,27 @@ class VADSilenceDetector {
         return .continue
     }
     
-    private func processFrame(_ frame: [Int16]) -> Bool {
-        // Placeholder implementation until WebRTCVAD is available
-        // When available, use: return vad.isSpeech(audioPreprocessor.frameDataToData(frame))
+    func processFrame(_ frame: [Int16]) -> Bool {
+        // Energy-based VAD implementation
+        // Calculate RMS energy
+        let sumOfSquares = frame.reduce(0.0) { $0 + Double($1) * Double($1) }
+        let rms = sqrt(sumOfSquares / Double(frame.count))
         
-        // For now, use a simple energy-based detection as fallback
-        let energy = frame.reduce(0) { $0 + abs(Int($1)) } / frame.count
-        return energy > 500
+        // Dynamic threshold based on noise floor
+        let energyThreshold: Double = 1000.0  // Empirically determined threshold
+        
+        // Additional zero-crossing rate for better speech detection
+        var zeroCrossings = 0
+        for i in 1..<frame.count {
+            if (frame[i-1] >= 0 && frame[i] < 0) || (frame[i-1] < 0 && frame[i] >= 0) {
+                zeroCrossings += 1
+            }
+        }
+        let zeroCrossingRate = Double(zeroCrossings) / Double(frame.count)
+        
+        // Speech typically has higher energy and moderate zero-crossing rate
+        let isVoiced = rms > energyThreshold && zeroCrossingRate < 0.5
+        
+        return isVoiced
     }
 }

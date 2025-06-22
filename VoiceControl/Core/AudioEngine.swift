@@ -19,24 +19,20 @@ class AudioEngine: NSObject, ObservableObject {
     
     // Continuous mode properties
     private var isContinuousMode = false
-    private var currentChunkBuffer = Data()
-    private var silenceTimer: Timer?
     
-    // VAD silence detection
-    private var vadDetector = VADSilenceDetector()
-    
-    // Remove pre-trigger buffer - we'll continuously record everything
-    
-    // For debugging
-    private var lastThresholdLogTime = Date()
-    private let thresholdLogInterval: TimeInterval = 2.0
-    
-    // Track if we have any audio accumulated
-    private var hasAccumulatedAudio = false
+    // VAD-based chunking
+    private var vadChunker = VADChunker()
     
     override init() {
         super.init()
         setupAudioSession()
+        
+        // Setup VAD chunker callback
+        vadChunker.onChunkReady = { [weak self] chunkData in
+            guard let self = self else { return }
+            print("DEBUG: VADChunker emitted chunk of size: \(chunkData.count) bytes")
+            self.audioChunkPublisher.send(chunkData)
+        }
     }
     
     private func setupAudioSession() {
@@ -89,12 +85,10 @@ class AudioEngine: NSObject, ObservableObject {
         
         // Clear all buffers before starting
         audioBuffer.removeAll()
-        currentChunkBuffer.removeAll()
         isContinuousMode = true
-        hasAccumulatedAudio = false
         
-        // Reset VAD detector to ensure clean state
-        vadDetector.reset()
+        // Reset VAD chunker to ensure clean state
+        vadChunker.reset()
         
         audioEngine = AVAudioEngine()
         guard let audioEngine = audioEngine else { return }
@@ -125,8 +119,6 @@ class AudioEngine: NSObject, ObservableObject {
     func stopRecording() {
         guard isRecording else { return }
         
-        silenceTimer?.invalidate()
-        silenceTimer = nil
         
         inputNode?.removeTap(onBus: 0)
         audioEngine?.stop()
@@ -135,25 +127,19 @@ class AudioEngine: NSObject, ObservableObject {
         
         isRecording = false
         
-        // Check if we were in continuous mode before clearing the flag
-        if isContinuousMode && !currentChunkBuffer.isEmpty {
-            // Send any remaining chunk
-            print("DEBUG: Sending final chunk on stop: \(currentChunkBuffer.count) bytes")
-            audioChunkPublisher.send(currentChunkBuffer)
-            currentChunkBuffer.removeAll()
-        } else if !audioBuffer.isEmpty {
+        // Send any recorded audio if not in continuous mode
+        if !isContinuousMode && !audioBuffer.isEmpty {
             recordingCompletePublisher.send(audioBuffer)
         }
         
-        // Clear all buffers
-        currentChunkBuffer.removeAll()
+        // Clear audio buffer
         audioBuffer.removeAll()
         
         // Reset continuous mode flag after processing
         isContinuousMode = false
         
-        // Reset VAD detector
-        vadDetector.reset()
+        // Reset VAD chunker
+        vadChunker.reset()
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -176,30 +162,13 @@ class AudioEngine: NSObject, ObservableObject {
         let convertedData = convertToTargetSampleRate(buffer)
         
         if isContinuousMode {
-            // Always accumulate audio while in continuous mode
-            currentChunkBuffer.append(convertedData)
-            
-            // Process with VAD detector
-            let result = vadDetector.processAudioData(convertedData)
-            
-            // Track if we're accumulating speech
-            if vadDetector.state == .speechDetected || vadDetector.state == .trailingSilence {
-                hasAccumulatedAudio = true
+            // Convert to Float array for VADChunker
+            let floatArray = convertedData.withUnsafeBytes { bytes in
+                Array(bytes.bindMemory(to: Float.self))
             }
             
-            // Log VAD state periodically for debugging
-            if Date().timeIntervalSince(lastThresholdLogTime) >= thresholdLogInterval {
-                print("VAD state: \(vadDetector.state), RMS: \(rms), Buffer size: \(currentChunkBuffer.count)")
-                lastThresholdLogTime = Date()
-            }
-            
-            // Only send chunk when VAD indicates complete speech segment
-            if result == .chunkReady && hasAccumulatedAudio && !currentChunkBuffer.isEmpty {
-                print("DEBUG: Sending complete audio chunk of size: \(currentChunkBuffer.count) bytes")
-                audioChunkPublisher.send(currentChunkBuffer)
-                currentChunkBuffer.removeAll()
-                hasAccumulatedAudio = false
-            }
+            // Process with VAD chunker
+            vadChunker.processAudioBuffer(floatArray)
         } else {
             // Normal recording mode
             audioBuffer.append(convertedData)
