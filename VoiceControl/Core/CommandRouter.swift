@@ -1,7 +1,7 @@
 import Foundation
-import OSLog
+import os.log
 
-private let logger = Logger(subsystem: "com.yourteam.VoiceControl", category: "CommandRouter")
+private let logger = os.Logger(subsystem: "com.yourteam.VoiceControl", category: "CommandRouter")
 
 class CommandRouter {
     private let accessibilityBridge: AccessibilityBridge

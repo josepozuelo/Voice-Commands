@@ -6,6 +6,16 @@ struct Config {
     static let editHotkey = "⌥⌘E"
     static let commandHotkey = "⌃⇧V"
     
+    // Edit Mode Configuration
+    struct EditMode {
+        static let maxRecordingDuration: TimeInterval = 600.0  // 10 minutes max recording
+        static let autoSelectParagraph = true  // Auto-select paragraph if no selection
+        static let gptModel = "gpt-4o-mini"  // GPT model for text editing
+        static let gptTemperature = 0.3  // Low temperature for consistent edits
+        static let gptMaxTokens = 2000  // Max tokens for response
+        static let formatDictation = true  // Flag to format dictated text with GPT
+    }
+    
     static let openAIKey: String = {
         // For development: First try environment variable
         if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
@@ -43,7 +53,7 @@ struct Config {
     
     // WebRTC VAD Configuration  
     static let vadEnabled = true  // Always use WebRTC Voice Activity Detection
-    static let vadMode: Int32 = 3  // VAD aggressiveness (0-3, 3 = very aggressive)
+    static let vadMode: Int32 = 1  // VAD aggressiveness (0-3, 1 = slightly aggressive)
     static let vadFrameDuration: TimeInterval = 0.02  // 20ms frames
     static let vadSampleRate: Int = 16000  // VAD requires 16kHz
     static let vadFrameSamples: Int = 320  // 320 samples per 20ms frame at 16kHz

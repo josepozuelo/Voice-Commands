@@ -1,6 +1,10 @@
 import SwiftUI
 import Combine
 
+extension Notification.Name {
+    static let startEditMode = Notification.Name("startEditMode")
+}
+
 struct CommandHUD: View {
     @ObservedObject var commandManager: CommandManager
     @State private var selectedIndex = 0
@@ -45,6 +49,23 @@ struct CommandHUD: View {
                 .foregroundColor(.primary)
             
             Spacer()
+            
+            // Edit Mode button
+            Button(action: {
+                NotificationCenter.default.post(name: .startEditMode, object: nil)
+            }) {
+                Label("Edit", systemImage: "pencil")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.2))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Edit Mode (⌥⌘E)")
             
             // Manual trigger button
             Button(action: {

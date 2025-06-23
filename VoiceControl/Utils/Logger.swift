@@ -1,8 +1,8 @@
 import Foundation
 import os.log
 
-class Logger {
-    static let shared = Logger()
+class VoiceControlLogger {
+    static let shared = VoiceControlLogger()
     private let osLog = OSLog(subsystem: Bundle.main.bundleIdentifier!, category: "VoiceControl")
     
     private init() {}

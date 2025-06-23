@@ -6,7 +6,11 @@ class CommandClassifier: ObservableObject {
     @Published var isClassifying = false
     @Published var error: Error?
     
-    private let session = URLSession.shared
+    private let openAIService: OpenAIService
+    
+    init(openAIService: OpenAIService = OpenAIService()) {
+        self.openAIService = openAIService
+    }
     
     enum ClassificationError: LocalizedError {
         case noAPIKey
@@ -29,17 +33,6 @@ class CommandClassifier: ObservableObject {
     }
     
     func classify(_ transcript: String) async throws -> CommandJSON {
-        guard !Config.openAIKey.isEmpty else {
-            throw ClassificationError.noAPIKey
-        }
-        
-        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(Config.openAIKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
         let systemPrompt = """
         Map a spoken phrase to exactly one JSON object from the list below and return only that JSON.
         If nothing matches, output {"intent":"none"}.
@@ -56,45 +49,19 @@ class CommandClassifier: ObservableObject {
         { "intent":"edit",     "instruction":"Replace the second sentence with 'Goodbye.'" }
         """
         
-        let requestBody: [String: Any] = [
-            "model": "gpt-4o-mini",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": transcript]
-            ],
-            "temperature": 0,
-            "max_tokens": 150
+        let messages: [[String: String]] = [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": transcript]
         ]
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        let content = try await openAIService.chatCompletion(
+            messages: messages,
+            model: "gpt-4o-mini",
+            temperature: 0,
+            maxTokens: 150
+        )
         
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ClassificationError.invalidResponse
-        }
-        
-        if httpResponse.statusCode != 200 {
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let error = json["error"] as? [String: Any],
-               let message = error["message"] as? String {
-                throw ClassificationError.classificationFailed(message)
-            } else {
-                throw ClassificationError.invalidResponse
-            }
-        }
-        
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw ClassificationError.invalidResponse
-        }
-        
-        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard let commandData = trimmedContent.data(using: .utf8),
+        guard let commandData = content.data(using: .utf8),
               let commandJSON = try? JSONDecoder().decode(CommandJSON.self, from: commandData) else {
             throw ClassificationError.noValidCommand
         }

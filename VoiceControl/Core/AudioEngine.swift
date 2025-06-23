@@ -2,6 +2,23 @@ import Foundation
 import AVFoundation
 import Combine
 
+enum AudioEngineError: LocalizedError {
+    case failedToInitialize
+    case failedToStart(Error)
+    case noRecordedAudio
+    
+    var errorDescription: String? {
+        switch self {
+        case .failedToInitialize:
+            return "Failed to initialize audio engine"
+        case .failedToStart(let error):
+            return "Failed to start audio engine: \(error.localizedDescription)"
+        case .noRecordedAudio:
+            return "No audio was recorded"
+        }
+    }
+}
+
 class AudioEngine: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0
@@ -80,6 +97,51 @@ class AudioEngine: NSObject, ObservableObject {
         }
     }
     
+    func startRecording(enableSilenceDetection: Bool, maxDuration: TimeInterval? = nil) async throws {
+        guard !isRecording else { return }
+        
+        audioBuffer.removeAll()
+        isContinuousMode = enableSilenceDetection
+        
+        audioEngine = AVAudioEngine()
+        guard let audioEngine = audioEngine else {
+            throw AudioEngineError.failedToInitialize
+        }
+        
+        inputNode = audioEngine.inputNode
+        guard let inputNode = inputNode else {
+            throw AudioEngineError.failedToInitialize
+        }
+        
+        // Use the input node's native format to avoid format mismatch
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        
+        inputNode.installTap(
+            onBus: 0,
+            bufferSize: bufferSize,
+            format: inputFormat
+        ) { [weak self] buffer, _ in
+            self?.processAudioBuffer(buffer)
+        }
+        
+        do {
+            try audioEngine.start()
+            await MainActor.run {
+                self.isRecording = true
+            }
+            
+            // Handle max duration if specified
+            if let maxDuration = maxDuration {
+                Task {
+                    try await Task.sleep(nanoseconds: UInt64(maxDuration * 1_000_000_000))
+                    await self.stopRecording()
+                }
+            }
+        } catch {
+            throw AudioEngineError.failedToStart(error)
+        }
+    }
+    
     func startContinuousRecording() {
         guard !isRecording else { return }
         
@@ -132,14 +194,27 @@ class AudioEngine: NSObject, ObservableObject {
             recordingCompletePublisher.send(audioBuffer)
         }
         
-        // Clear audio buffer
-        audioBuffer.removeAll()
+        // Don't clear the buffer immediately - let getRecordedAudio() retrieve it first
+        // The buffer will be cleared when starting a new recording
         
         // Reset continuous mode flag after processing
         isContinuousMode = false
         
         // Reset VAD chunker
         vadChunker.reset()
+    }
+    
+    func stopRecording() async {
+        await MainActor.run {
+            self.stopRecording()
+        }
+    }
+    
+    func getRecordedAudio() async -> Data? {
+        guard !audioBuffer.isEmpty else { return nil }
+        let recordedData = audioBuffer
+        audioBuffer.removeAll()  // Clear buffer after retrieving
+        return recordedData
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {

@@ -19,10 +19,7 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 
 ## Development Commands
 
-### Build and Run
-- Open project: `open VoiceControl.xcodeproj`
-- Build in Xcode: ⌘B or Product → Build
-- Run in Xcode: ⌘R or Product → Run
+
 
 ### Environment Setup
 - Required environment variable: `OPENAI_API_KEY`
@@ -33,15 +30,7 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 ### Release Build and Installation
 Every time you build a new release for testing, follow these steps:
 
-1. Kill any running instances: `pkill -f VoiceControl`
-2. Build release: `xcodebuild -project VoiceControl.xcodeproj -scheme VoiceControl -configuration Release -derivedDataPath build clean build`
-3. Install to Applications: `cp -R "build/Build/Products/Release/VoiceControl.app" /Applications/`
-4. Reset all permissions:
-   - `tccutil reset Accessibility com.yourteam.VoiceControl`
-   - `tccutil reset ListenEvent com.yourteam.VoiceControl`
-   - `tccutil reset PostEvent com.yourteam.VoiceControl`
-5. Sign the app: `codesign --force --deep --sign - /Applications/VoiceControl.app`
-6. Launch `/Applications/VoiceControl.app` and grant all permissions when prompted
+- Use a add_files_simple.py to make sure your xcode configuration is up to date
 
 **Note**: The permission reset is necessary because macOS tracks permissions by app signature, which changes with each build.
 
@@ -77,42 +66,3 @@ The app requires these macOS permissions:
 - **Utils/HotkeyManager.swift**: Global hotkey registration and detection
 - **Utils/TextSelection.swift**: Text selection utilities and boundary detection
 - **Utils/CircularBuffer.swift**: Audio buffer implementation for continuous capture
-
-### Command System
-
-Commands are defined in `Resources/commands.json` with:
-- **phrases**: Array of voice trigger phrases
-- **action**: Action type and parameters (selectText, systemAction, moveCursor)
-- **category**: Grouping (textSelection, system, navigation, editing)
-
-The fuzzy matching system uses confidence scoring (threshold: 0.85) to decide between:
-- Auto-execution for high-confidence matches
-- Disambiguation HUD for multiple possible matches (voice-enabled: say "one", "two", or "three")
-
-### Operating Modes
-- **Single Command Mode**: Press hotkey, speak command, auto-stops after execution
-- **Continuous Mode** (default): Press hotkey once, speak multiple commands, auto-detects silence between commands, press hotkey again to stop
-
-### Global Hotkeys
-- **⌃⇧V**: Voice Commands (implemented)
-- **⌥⌘D**: Dictation Mode (future feature)
-- **⌥⌘E**: Edit Mode (future feature)
-
-## Configuration Files
-
-- **Config/Secrets.xcconfig**: API key storage (create from Secrets.xcconfig.example)
-- **Config/Base.xcconfig**: Base configuration inheriting from Secrets
-- **Info.plist**: App permissions and bundle configuration
-- **VoiceControl.entitlements**: App sandbox and permission entitlements
-
-## Adding New Commands
-
-1. Edit `VoiceControl/Resources/commands.json`
-2. Add new command object with required fields: id, phrases, action, category
-3. Rebuild project to include changes
-4. Test with target applications (TextEdit, Safari, VS Code, etc.)
-
-Action types:
-- `selectText`: Text selection with selectionType (word, sentence, paragraph, etc.)
-- `systemAction`: Keyboard shortcuts with key combinations
-- `moveCursor`: Cursor movement with direction and unit parameters

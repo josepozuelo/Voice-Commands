@@ -71,8 +71,6 @@ class HotkeyManager: ObservableObject {
         
         // Use the modern, recommended NSEvent API for global monitoring
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            print("🔑 Global monitor received key event!")
-            self?.logToFile("🔑 Global monitor received key event! KeyCode: \(event.keyCode)")
             self?.handleKeyEvent(event)
         }
         

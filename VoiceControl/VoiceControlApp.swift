@@ -5,10 +5,27 @@ import Combine
 struct VoiceControlApp: App {
     @StateObject private var commandManager = CommandManager()
     @StateObject private var hotkeyManager = HotkeyManager()
+    @StateObject private var editManager: EditManager
     @State private var hudWindowController: CommandHUDWindowController?
+    @State private var editModeHUDController: EditModeHUDWindowController?
     @State private var hasSetupApp = false
     @State private var hasShownPermissionDialog = false
     @State private var isCheckingPermissions = false
+    
+    init() {
+        let audioEngine = AudioEngine()
+        let openAIService = OpenAIService()
+        let whisperService = WhisperService(openAIService: openAIService)
+        let accessibilityBridge = AccessibilityBridge()
+        let gptService = GPTService(openAIService: openAIService)
+        
+        _editManager = StateObject(wrappedValue: EditManager(
+            audioEngine: audioEngine,
+            whisperService: whisperService,
+            accessibilityBridge: accessibilityBridge,
+            gptService: gptService
+        ))
+    }
     
     var body: some Scene {
         WindowGroup(content: {
@@ -58,10 +75,14 @@ struct VoiceControlApp: App {
     
     private func setupHUD() {
         hudWindowController = CommandHUDWindowController(commandManager: commandManager)
+        editModeHUDController = EditModeHUDWindowController(editManager: editManager)
     }
     
     private func connectComponents() {
         commandManager.setHotkeyManager(hotkeyManager)
+        
+        // Setup edit manager to listen to hotkey events
+        editManager.setupHotkeyListener(hotkeyManager: hotkeyManager)
     }
     
     private func checkAccessibilityPermission() {

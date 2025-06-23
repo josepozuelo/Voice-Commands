@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		829E5290B9C84AED8D96E095 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23F5673E56E437DA4FF79C0 /* Logger.swift */; };
 		A1000001000000000000001 /* VoiceControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001000000000000001 /* VoiceControlApp.swift */; };
-		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
 		A1000002000000000000002 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002000000000000002 /* Config.swift */; };
 		A1000003000000000000003 /* AccessibilityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003000000000000003 /* AccessibilityBridge.swift */; };
 		A1000004000000000000004 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004000000000000004 /* AudioEngine.swift */; };
@@ -26,11 +26,14 @@
 		A1000016000000000000016 /* CommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019000000000000019 /* CommandIntent.swift */; };
 		A1000017000000000000017 /* CommandClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020000000000000020 /* CommandClassifier.swift */; };
 		A1000018000000000000018 /* CommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021000000000000021 /* CommandRouter.swift */; };
+		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
+		ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VoiceControl.release.xcconfig"; path = "Target Support Files/Pods-VoiceControl/Pods-VoiceControl.release.xcconfig"; sourceTree = "<group>"; };
+		73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VoiceControl.debug.xcconfig"; path = "Target Support Files/Pods-VoiceControl/Pods-VoiceControl.debug.xcconfig"; sourceTree = "<group>"; };
 		A2000001000000000000001 /* VoiceControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControlApp.swift; sourceTree = "<group>"; };
-		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
 		A2000002000000000000002 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		A2000003000000000000003 /* AccessibilityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityBridge.swift; sourceTree = "<group>"; };
 		A2000004000000000000004 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
@@ -44,14 +47,18 @@
 		A2000012000000000000012 /* commands.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = commands.json; sourceTree = "<group>"; };
 		A2000013000000000000013 /* VoiceControl.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceControl.entitlements; sourceTree = "<group>"; };
 		A2000014000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A2000015000000000000015 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Base.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
-		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000015000000000000015 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		A2000016000000000000016 /* AudioPreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPreprocessor.swift; sourceTree = "<group>"; };
 		A2000017000000000000017 /* VADSilenceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADSilenceDetector.swift; sourceTree = "<group>"; };
 		A2000018000000000000018 /* VADChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADChunker.swift; sourceTree = "<group>"; };
 		A2000019000000000000019 /* CommandIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandIntent.swift; sourceTree = "<group>"; };
 		A2000020000000000000020 /* CommandClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandClassifier.swift; sourceTree = "<group>"; };
 		A2000021000000000000021 /* CommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRouter.swift; sourceTree = "<group>"; };
+		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_VoiceControl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D23F5673E56E437DA4FF79C0 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControl/Utils/Logger.swift; sourceTree = "<group>"; };
+		D526D4BF2E0A04A00084C5EA /* VoiceControlRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceControlRelease.entitlements; sourceTree = "<group>"; };
+		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,23 +66,37 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0D3B32C7C900BDCE30AE10FA /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */,
+				388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		A5000001000000000000001 = {
 			isa = PBXGroup;
 			children = (
 				A5000002000000000000002 /* VoiceControl */,
 				A5000003000000000000003 /* Products */,
+				D526D4BE2E0A01640084C5EA /* Recovered References */,
+				0D3B32C7C900BDCE30AE10FA /* Pods */,
+				C94318640C96A3A629947FF1 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
 		A5000002000000000000002 /* VoiceControl */ = {
 			isa = PBXGroup;
 			children = (
+				D526D4BF2E0A04A00084C5EA /* VoiceControlRelease.entitlements */,
 				A2000001000000000000001 /* VoiceControlApp.swift */,
 				A5000004000000000000004 /* Config */,
 				A5000005000000000000005 /* Core */,
@@ -151,7 +172,8 @@
 			children = (
 				A2000010000000000000010 /* HotkeyManager.swift */,
 				A2000011000000000000011 /* TextSelection.swift */,
-				F390453067AD43618C6AE6E2 /* CircularBuffer.swift */,);
+				F390453067AD43618C6AE6E2 /* CircularBuffer.swift */,
+			);
 			path = Utils;
 			sourceTree = "<group>";
 		};
@@ -165,6 +187,22 @@
 			path = Command;
 			sourceTree = "<group>";
 		};
+		C94318640C96A3A629947FF1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D526D4BE2E0A01640084C5EA /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				D23F5673E56E437DA4FF79C0 /* Logger.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -172,9 +210,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A7000001000000000000001 /* Build configuration list for PBXNativeTarget "VoiceControl" */;
 			buildPhases = (
+				DA16A76EDCEE3E8A860B64B7 /* [CP] Check Pods Manifest.lock */,
 				A8000001000000000000001 /* Sources */,
 				A4000001000000000000001 /* Frameworks */,
 				A9000001000000000000001 /* Resources */,
+				B00A55366423D76D246A2929 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -229,6 +269,48 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		B00A55366423D76D246A2929 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		DA16A76EDCEE3E8A860B64B7 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-VoiceControl-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		A8000001000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -252,6 +334,7 @@
 				A1000016000000000000016 /* CommandIntent.swift in Sources */,
 				A1000017000000000000017 /* CommandClassifier.swift in Sources */,
 				A1000018000000000000018 /* CommandRouter.swift in Sources */,
+				829E5290B9C84AED8D96E095 /* Logger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,7 +343,7 @@
 /* Begin XCBuildConfiguration section */
 		B2000001000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A2000015000000000000015 /* Base.xcconfig */;
+			baseConfigurationReference = 73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -324,7 +407,7 @@
 		};
 		B2000001000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A2000015000000000000015 /* Base.xcconfig */;
+			baseConfigurationReference = 388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -380,16 +463,17 @@
 		};
 		B3000001000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A2000015000000000000015 /* Base.xcconfig */;
+			baseConfigurationReference = 73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = VoiceControl/VoiceControl.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = B378YDX97N;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -411,17 +495,18 @@
 		};
 		B3000001000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A2000015000000000000015 /* Base.xcconfig */;
+			baseConfigurationReference = 388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = VoiceControl/VoiceControl.entitlements;
+				CODE_SIGN_ENTITLEMENTS = VoiceControl/VoiceControlRelease.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = YES;
+				DEVELOPMENT_TEAM = B378YDX97N;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoiceControl/Info.plist;
@@ -443,20 +528,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B1000001000000000000001 /* Build configuration list for PBXProject "VoiceControl" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B2000001000000000000001 /* Debug */,
-				B2000001000000000000002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A7000001000000000000001 /* Build configuration list for PBXNativeTarget "VoiceControl" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B3000001000000000000001 /* Debug */,
 				B3000001000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B1000001000000000000001 /* Build configuration list for PBXProject "VoiceControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2000001000000000000001 /* Debug */,
+				B2000001000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

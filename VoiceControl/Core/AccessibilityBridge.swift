@@ -23,6 +23,109 @@ class AccessibilityBridge {
         }
     }
     
+    func hasTextSelection() async -> Bool {
+        guard HotkeyManager.hasAccessibilityPermission() else {
+            return false
+        }
+        
+        let systemWideElement = AXUIElementCreateSystemWide()
+        var focusedElement: CFTypeRef?
+        
+        let result = AXUIElementCopyAttributeValue(
+            systemWideElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedElement
+        )
+        
+        guard result == .success,
+              let element = focusedElement else {
+            return false
+        }
+        
+        var selectedText: CFTypeRef?
+        let textResult = AXUIElementCopyAttributeValue(
+            element as! AXUIElement,
+            kAXSelectedTextAttribute as CFString,
+            &selectedText
+        )
+        
+        if textResult == .success,
+           let text = selectedText as? String,
+           !text.isEmpty {
+            return true
+        }
+        
+        return false
+    }
+    
+    func selectParagraphIfNoSelection() async {
+        let hasSelection = await hasTextSelection()
+        if !hasSelection {
+            try? selectParagraph()
+        }
+    }
+    
+    func replaceText(originalText: String, newText: String) async throws {
+        guard HotkeyManager.hasAccessibilityPermission() else {
+            print("DEBUG: AccessibilityBridge - No accessibility permission")
+            throw AccessibilityError.noAccessibilityPermission
+        }
+        
+        print("DEBUG: AccessibilityBridge - Attempting to replace text")
+        print("DEBUG: AccessibilityBridge - Original text: '\(originalText)'")
+        print("DEBUG: AccessibilityBridge - New text: '\(newText)'")
+        
+        // Check if we already have the text selected
+        if let currentSelection = try? getCurrentSelection() {
+            print("DEBUG: AccessibilityBridge - Current selection: '\(currentSelection.text)'")
+            if currentSelection.text == originalText {
+                print("DEBUG: AccessibilityBridge - Text already selected, replacing directly")
+                simulateKeyboardInput(newText)
+                return
+            }
+        }
+        
+        // If text is not selected, try to select it
+        print("DEBUG: AccessibilityBridge - Text not selected, attempting to select all")
+        
+        // Try selecting all text first
+        simulateKeyCommand(key: CGKeyCode(kVK_ANSI_A), modifiers: [.command])
+        usleep(100000)
+        
+        if let selection = try? getCurrentSelection() {
+            print("DEBUG: AccessibilityBridge - Selected all text: '\(selection.text)'")
+            // If the selected text contains our original text, just replace everything
+            if selection.text.contains(originalText) {
+                print("DEBUG: AccessibilityBridge - Replacing entire selection")
+                simulateKeyboardInput(newText)
+                return
+            }
+        }
+        
+        // If that didn't work, try the find-and-replace approach
+        print("DEBUG: AccessibilityBridge - Trying find-and-replace approach")
+        simulateKeyCommand(key: CGKeyCode(kVK_ANSI_F), modifiers: [.command])
+        usleep(100000)
+        
+        simulateKeyboardInput(originalText)
+        usleep(100000)
+        
+        simulateKeyCommand(key: CGKeyCode(kVK_Return), modifiers: [])
+        usleep(100000)
+        
+        simulateKeyCommand(key: CGKeyCode(kVK_Escape), modifiers: [])
+        usleep(100000)
+        
+        if let selection = try? getCurrentSelection(),
+           selection.text == originalText {
+            print("DEBUG: AccessibilityBridge - Found and selected text, replacing")
+            simulateKeyboardInput(newText)
+        } else {
+            print("DEBUG: AccessibilityBridge - Failed to find text, throwing error")
+            throw AccessibilityError.failedToPerformAction
+        }
+    }
+    
     func getCurrentSelection() throws -> (text: String, range: NSRange)? {
         guard HotkeyManager.hasAccessibilityPermission() else {
             throw AccessibilityError.noAccessibilityPermission
@@ -209,7 +312,7 @@ class AccessibilityBridge {
         try selectSentence()
     }
     
-    private func selectParagraph() throws {
+    func selectParagraph() throws {
         simulateKeyCommand(key: CGKeyCode(kVK_UpArrow), modifiers: [.option])
         simulateKeyCommand(key: CGKeyCode(kVK_DownArrow), modifiers: [.option, .shift])
     }
@@ -230,7 +333,7 @@ class AccessibilityBridge {
         keyDown?.post(tap: .cghidEventTap)
         keyUp?.post(tap: .cghidEventTap)
         
-        Thread.sleep(forTimeInterval: 0.01)
+        usleep(10000)
     }
     
     private func simulateKeyboardInput(_ text: String) {
