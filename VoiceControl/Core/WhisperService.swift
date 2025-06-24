@@ -134,7 +134,10 @@ class OpenAIService {
             throw OpenAIError.invalidResponse
         }
         
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        print("DEBUG: OpenAIService.chatCompletion - Model: \(model), Response: '\(trimmedContent)'")
+        
+        return trimmedContent
     }
     
     private func convertToWAV(audioData: Data) -> Data {
@@ -181,14 +184,45 @@ class GPTService {
         print("DEBUG: GPTService.editText - Instructions: '\(instructions)'")
         
         let systemPrompt = """
-        You are tasked with correcting dictation errors from speech-to-text output. The correction instructions you receive are also dictated and may contain errors.
-        • Only apply corrections that the user explicitly requests (for example, fixing a specific word or phrase that was transcribed incorrectly).
-        • Do not change form, style, arrangement, punctuation, or any other aspect of the text unless it directly addresses a dictation error mentioned by the user.
-        • When the user wants to correct spelling, they will say "spelled…" followed by example words that start with each letter. For instance, "spelled: Apple, Dog, Cat" means the intended letters are "A," "D," and "C." There will be no explicit "end spelling" cue, so infer when the spelling sequence stops.
-        
-        Do not make any additions or stylistic edits beyond the exact dictation corrections the user specifies.
-        
-        Output the corrected_message as a json property.
+        Dictation Error Corrector Prompt (string-friendly)
+
+        You receive two strings:
+            •	ORIGINAL – raw speech-to-text.
+            •	EDITS – spoken correction commands that were also transcribed and may contain typos or homophone errors.
+
+        Return ONE line of JSON:
+
+        {"corrected_message":"<the fixed text>"}
+
+
+        ⸻
+
+        How to read EDITS
+
+        Phrase in EDITS	What it really means
+        “change X to Y”, “replace X with Y”	X = word in ORIGINAL that sounds like X; Y = intended replacement (interpret both phonetically).
+        X not spelled the same in ORIGINAL	Choose the closest phonetic or obvious misspelling (“wrold” for “world”, etc.).
+        Homophones (their/there, two/too, etc.)	Use sentence context to pick the correct one.
+
+
+        ⸻
+
+        Special workflow for names
+            1.	Locate – Find the NAME in ORIGINAL that most closely sounds like the name referenced in EDITS.
+            2.	Spell – Parse the speaker’s spelled-out letters:
+            •	Speech-to-text may transcribe letters as words (“B” → “be”, “R” → “are”).
+            •	Re-assemble those letters into the intended spelling.
+            3.	Replace – Substitute that corrected spelling into ORIGINAL.
+            •	Never copy-paste the name string from EDITS without validating the spelling you inferred.
+
+        ⸻
+
+        Do apply
+            •	Only the specific corrections requested (after smart interpretation).
+
+        Do NOT
+            •	Touch punctuation, capitalization, or anything else unless explicitly told.
+            •	Add or delete content outside the pinpointed change.
         """
         
         let userPrompt = """
@@ -256,12 +290,17 @@ class GPTService {
             ["role": "user", "content": text]
         ]
         
-        return try await openAIService.chatCompletion(
+        let response = try await openAIService.chatCompletion(
             messages: messages,
             model: Config.EditMode.gptModel,
             temperature: 0.1, // Very low temperature for consistent formatting
             maxTokens: text.count * 2 // Allow some room for punctuation
         )
+        
+        print("DEBUG: GPTService.formatDictation - Input: '\(text)'")
+        print("DEBUG: GPTService.formatDictation - GPT response: '\(response)'")
+        
+        return response
     }
 }
 
@@ -281,30 +320,31 @@ class WhisperService: ObservableObject {
     func transcribe(audioData: Data) async throws -> String {
         do {
             let text = try await openAIService.transcribeAudio(audioData: audioData)
-            print("DEBUG: Transcription successful: \(text)")
             return text
         } catch {
-            print("DEBUG: WhisperService transcription error: \(error)")
             throw error
         }
     }
     
     func startTranscription(audioData: Data) {
+        print("🎙️ WHISPER: startTranscription called with audio data: \(audioData.count) bytes")
         isTranscribing = true
         error = nil
-        transcriptionText = "" // Reset previous transcription
+        // Don't reset transcriptionText here - it causes a race condition
+        // The empty string triggers handleTranscriptionResult before actual transcription completes
         
         Task {
             do {
+                print("🎙️ WHISPER: Calling transcribe...")
                 let text = try await transcribe(audioData: audioData)
+                print("🎙️ WHISPER: Transcription result: '\(text)'")
                 await MainActor.run {
-                    print("DEBUG: Setting transcription text to: '\(text)'")
                     self.transcriptionText = text
                     self.isTranscribing = false
                 }
             } catch {
+                print("🎙️ WHISPER: Transcription error: \(error)")
                 await MainActor.run {
-                    print("DEBUG: WhisperService error: \(error)")
                     self.error = error
                     self.isTranscribing = false
                 }

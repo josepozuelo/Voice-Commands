@@ -67,6 +67,7 @@ class CommandManager: ObservableObject {
             .store(in: &cancellables)
         
         whisperService.$transcriptionText
+            .removeDuplicates() // Ignore duplicate values
             .sink { [weak self] text in
                 // Handle both empty and non-empty transcriptions
                 self?.handleTranscriptionResult(text)
@@ -148,7 +149,6 @@ class CommandManager: ObservableObject {
         currentCommand = nil
         error = nil
         
-        print("DEBUG: Starting continuous recording...")
         audioEngine.startContinuousRecording()
     }
     
@@ -183,13 +183,11 @@ class CommandManager: ObservableObject {
     
     private func startListening() {
         guard !isListening else { 
-            print("DEBUG: Already listening, ignoring start request")
             return 
         }
         
         // Ensure clean state before starting
         if hudState != .idle {
-            print("DEBUG: Resetting from state \(hudState) to idle before starting")
             resetToIdle()
         }
         
@@ -199,7 +197,6 @@ class CommandManager: ObservableObject {
         currentCommand = nil
         error = nil
         
-        print("DEBUG: Starting audio recording...")
         audioEngine.startRecording()
     }
     
@@ -211,23 +208,21 @@ class CommandManager: ObservableObject {
     }
     
     private func processAudioData(_ audioData: Data) {
-        print("DEBUG: Processing audio data of size: \(audioData.count) bytes")
+        let seconds = Float(audioData.count) / (16000.0 * 4.0)
+        print("🎵 COMMAND MANAGER: Received audio data: \(String(format: "%.1f", seconds))s")
         hudState = .processing
         whisperService.startTranscription(audioData: audioData)
     }
     
     private func processAudioChunk(_ audioChunk: Data) {
-        print("DEBUG: Processing audio chunk of size: \(audioChunk.count) bytes")
         
         // Don't process if we're already processing or in an error state
         guard hudState == .continuousListening else {
-            print("DEBUG: Skipping chunk processing - current state: \(hudState)")
             return
         }
         
         // Guard against concurrent processing
         guard !isProcessingChunk else {
-            print("DEBUG: Already processing a chunk, skipping")
             return
         }
         
@@ -239,30 +234,37 @@ class CommandManager: ObservableObject {
     }
     
     private func handleTranscriptionResult(_ text: String) {
+        print("🎤 TRANSCRIPTION: Received result: '\(text)' (length: \(text.count))")
+        
         // Reset processing flag for continuous mode
         isProcessingChunk = false
         
         // Check if we got empty transcription
         if text.isEmpty {
-            print("DEBUG: Received empty transcription")
+            print("🎤 TRANSCRIPTION: Empty result, showing error")
             showError("No speech detected. Please try again.")
             return
         }
         
         // Set recognized text immediately to show in HUD
         recognizedText = text
+        print("🎤 TRANSCRIPTION: Processing non-empty text: '\(text)'")
         
         // Process non-empty transcription with LLM
         classifyAndExecute(text)
     }
     
     private func classifyAndExecute(_ text: String) {
+        print("📊 STATE: classifyAndExecute called with text: '\(text)'")
         lastTranscription = text
         hudState = .classifying
+        print("📊 STATE: Changed to .classifying")
         
         Task {
             do {
+                print("📊 STATE: About to call commandClassifier.classify()")
                 let command = try await commandClassifier.classify(text)
+                print("📊 STATE: Received command with intent: \(command.intent.rawValue)")
                 
                 await MainActor.run {
                     self.currentCommand = command
@@ -270,19 +272,24 @@ class CommandManager: ObservableObject {
                     // Execute the command
                     Task {
                         do {
+                            print("📊 STATE: About to route command")
                             try await self.commandRouter.route(command)
+                            print("📊 STATE: Command routed successfully")
                             
                             await MainActor.run {
                                 if self.isContinuousMode {
                                     // Return to continuous listening after executing
+                                    print("📊 STATE: Returning to continuous mode")
                                     self.hudState = .continuousListening
                                     self.currentCommand = nil
                                     self.recognizedText = ""
                                 } else {
+                                    print("📊 STATE: Resetting to idle")
                                     self.resetToIdle()
                                 }
                             }
                         } catch {
+                            print("📊 STATE: Error routing command: \(error)")
                             await MainActor.run {
                                 self.handleError(error)
                             }
@@ -290,6 +297,7 @@ class CommandManager: ObservableObject {
                     }
                 }
             } catch {
+                print("📊 STATE: Error classifying: \(error)")
                 await MainActor.run {
                     self.handleError(error)
                 }
@@ -317,17 +325,22 @@ class CommandManager: ObservableObject {
     }
     
     private func showError(_ message: String) {
+        print("❌ ERROR: showError called with message: '\(message)'")
+        print("❌ ERROR: Called from router feedback callback")
         let commandError = CommandError.executionFailed(message)
         error = commandError
         hudState = .error(commandError)
+        print("❌ ERROR: HUD state changed to .error")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             if self?.isContinuousMode == true {
+                print("❌ ERROR: Returning to continuous mode after error")
                 self?.hudState = .continuousListening
                 self?.error = nil
                 // Clear recognized text after showing error
                 self?.recognizedText = ""
             } else {
+                print("❌ ERROR: Resetting to idle after error")
                 self?.resetToIdle()
             }
         }
@@ -400,7 +413,7 @@ class EditManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
-    private var originalTextPosition: (String, NSRange)?
+    private var editContext: EditContext?
     
     init(audioEngine: AudioEngine,
          whisperService: WhisperService,
@@ -460,27 +473,36 @@ class EditManager: ObservableObject {
             do {
                 state = .selecting
                 
-                let hasSelection = await accessibilityBridge.hasTextSelection()
-                if !hasSelection {
-                    try accessibilityBridge.selectParagraph()
+                print("DEBUG: EditManager - Getting edit context")
+                let context = try accessibilityBridge.getEditContext()
+                editContext = context
+                
+                // Extract text based on context
+                switch context {
+                case .selectedText(let text):
+                    print("DEBUG: EditManager - Editing selected text: '\(text)'")
+                    selectedText = text
+                    
+                case .paragraphAroundCursor(let text, _):
+                    print("DEBUG: EditManager - Editing paragraph around cursor: '\(text)'")
+                    selectedText = text
+                    
+                case .entireDocument(let text):
+                    print("DEBUG: EditManager - Editing entire document")
+                    selectedText = text
                 }
                 
-                if let selection = try? accessibilityBridge.getCurrentSelection() {
-                    selectedText = selection.text
-                    originalTextPosition = (selection.text, selection.range)
-                    
-                    recordingStartTime = Date()
-                    state = .recording(startTime: recordingStartTime!)
-                    startRecordingTimer()
-                    
-                    try await audioEngine.startRecording(
-                        enableSilenceDetection: false,
-                        maxDuration: Config.EditMode.maxRecordingDuration
-                    )
-                } else {
-                    throw EditError.noTextFieldAccessible
-                }
+                recordingStartTime = Date()
+                state = .recording(startTime: recordingStartTime!)
+                startRecordingTimer()
+                
+                try await audioEngine.startRecording(
+                    enableSilenceDetection: false,
+                    maxDuration: Config.EditMode.maxRecordingDuration
+                )
+                
             } catch {
+                print("DEBUG: EditManager - Error in startEditing: \(error)")
                 handleError(error)
             }
         }
@@ -498,7 +520,7 @@ class EditManager: ObservableObject {
         stopRecordingTimer()
         recordingStartTime = nil
         selectedText = ""
-        originalTextPosition = nil
+        editContext = nil
         state = .idle
         
         Task {
@@ -531,14 +553,11 @@ class EditManager: ObservableObject {
             
             state = .replacing
             
-            if let (originalText, _) = originalTextPosition {
-                print("DEBUG: Edit Mode - Attempting to replace text")
-                try await accessibilityBridge.replaceText(
-                    originalText: originalText,
-                    newText: editedText
-                )
-                print("DEBUG: Edit Mode - Text replacement successful")
-            }
+            // Use the new direct AX replacement method with context
+            print("DEBUG: Edit Mode - Attempting direct AX replacement")
+            print("DEBUG: Edit Mode - Edit context: \(String(describing: editContext))")
+            try accessibilityBridge.replaceSelectionWithCorrectedText(editedText, editContext: editContext)
+            print("DEBUG: Edit Mode - Text replacement successful")
             
             state = .idle
             resetState()
@@ -551,10 +570,10 @@ class EditManager: ObservableObject {
     
     private func startRecordingTimer() {
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self,
-                  let startTime = self.recordingStartTime else { return }
-            
             Task { @MainActor in
+                guard let self = self,
+                      let startTime = self.recordingStartTime else { return }
+                
                 self.recordingTime = Date().timeIntervalSince(startTime)
                 
                 if self.recordingTime >= Config.EditMode.maxRecordingDuration {
@@ -572,7 +591,7 @@ class EditManager: ObservableObject {
     
     private func resetState() {
         selectedText = ""
-        originalTextPosition = nil
+        editContext = nil
         recordingStartTime = nil
         errorMessage = ""
     }
