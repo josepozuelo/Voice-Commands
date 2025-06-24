@@ -53,6 +53,8 @@ enum CommandDirection: String, Codable {
     case right
     case forward
     case back
+    case beginning
+    case end
 }
 
 enum TabAction: String, Codable {

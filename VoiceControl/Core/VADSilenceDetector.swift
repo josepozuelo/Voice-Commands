@@ -57,7 +57,7 @@ class VADSilenceDetector: NSObject {
             voiceStartVadTrueRatio: 0.5,   // 50% of frames must exceed threshold to start (v5 default)
             voiceEndVadFalseRatio: 0.95,  // 95% of frames must be below threshold to end
             voiceStartFrameCount: 10,    // 10 frames (0.32s) to confirm speech start
-            voiceEndFrameCount: 57     // 57 frames (1.8s) to confirm speech end
+            voiceEndFrameCount: 9     // 9 frames (~300ms) to confirm speech end
         )
         
         logger.info("VADSilenceDetector initialized with Silero v5")

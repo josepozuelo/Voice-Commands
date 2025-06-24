@@ -177,6 +177,10 @@ class CommandRouter {
             cursorDirection = .left
         case .right, .forward, .next:
             cursorDirection = .right
+        case .beginning:
+            cursorDirection = .beginning
+        case .end:
+            cursorDirection = .end
         default:
             throw RouteError.unsupportedDirection(direction.rawValue)
         }

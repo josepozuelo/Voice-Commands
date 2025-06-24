@@ -68,7 +68,7 @@ struct Config {
     static let vadSampleRate: Int = 16000  // VAD requires 16kHz
     static let vadFrameSamples: Int = 320  // 320 samples per 20ms frame at 16kHz
     static let vadSpeechFrameThreshold = 3  // Consecutive speech frames to start speech
-    static let vadSilenceTimeout: TimeInterval = 1.2  // 1200ms silence to end speech (increased for better separation)
+    static let vadSilenceTimeout: TimeInterval = 1.2  // Not used - Silero VAD uses frame counts instead
     static let vadMinSpeechDuration: TimeInterval = 0.2  // Minimum speech duration to process
     
     // Disambiguation Configuration

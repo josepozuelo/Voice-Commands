@@ -231,6 +231,30 @@ class AccessibilityBridge {
         case (.end, .document):
             keyCode = CGKeyCode(kVK_DownArrow)
             modifiers = .maskCommand
+        case (.up, .paragraph):
+            // Move to previous paragraph
+            keyCode = CGKeyCode(kVK_UpArrow)
+            modifiers = .maskAlternate
+        case (.down, .paragraph):
+            // Move to next paragraph
+            keyCode = CGKeyCode(kVK_DownArrow)
+            modifiers = .maskAlternate
+        case (.left, .paragraph):
+            // Move to previous paragraph
+            keyCode = CGKeyCode(kVK_UpArrow)
+            modifiers = .maskAlternate
+        case (.right, .paragraph):
+            // Move to next paragraph
+            keyCode = CGKeyCode(kVK_DownArrow)
+            modifiers = .maskAlternate
+        case (.beginning, .paragraph):
+            // Move to beginning of current paragraph
+            keyCode = CGKeyCode(kVK_UpArrow)
+            modifiers = .maskAlternate
+        case (.end, .paragraph):
+            // Move to end of current paragraph
+            keyCode = CGKeyCode(kVK_DownArrow)
+            modifiers = .maskAlternate
         default:
             throw AccessibilityError.unsupportedOperation
         }

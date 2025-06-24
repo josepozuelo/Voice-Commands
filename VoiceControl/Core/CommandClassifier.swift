@@ -60,10 +60,11 @@ class CommandClassifier: ObservableObject {
                                 "direction":"this|next|prev", "count":1 }
 
         MOVE INTENT - For cursor movement:
-        { "intent":"move",     "direction":"up|down|left|right|forward|back",
+        { "intent":"move",     "direction":"up|down|left|right|forward|back|beginning|end",
                                 "unit":"char|word|sentence|paragraph|line",
                                 "count":1 }
         Note: For page navigation use shortcut intent with pageup/pagedown keys
+        Examples: go to beginning of paragraph, move to end of line, go to start of document
 
         TAB INTENT - For browser tab management only:
         { "intent":"tab",      "action":"new|close|next|prev|show", "index":0 }
