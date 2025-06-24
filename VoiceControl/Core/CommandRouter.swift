@@ -5,12 +5,14 @@ private let logger = os.Logger(subsystem: "com.yourteam.VoiceControl", category:
 
 class CommandRouter {
     private let accessibilityBridge: AccessibilityBridge
+    private let gptService: GPTService
     
     // Callback for UI feedback
     var onFeedback: ((String) -> Void)?
     
-    init(accessibilityBridge: AccessibilityBridge) {
+    init(accessibilityBridge: AccessibilityBridge, gptService: GPTService = GPTService()) {
         self.accessibilityBridge = accessibilityBridge
+        self.gptService = gptService
     }
     
     func route(_ command: CommandJSON) async throws {
@@ -37,6 +39,9 @@ class CommandRouter {
             
         case .edit:
             try await routeEdit(command)
+            
+        case .highlight_phrase:
+            try await routeHighlightPhrase(command)
             
         case .none:
             handleNoneIntent()
@@ -262,6 +267,55 @@ class CommandRouter {
         logger.info("Edit intent: \"\(instruction)\"")
         onFeedback?("Edit mode coming soon")
         // TODO: Implement edit mode
+    }
+    
+    // MARK: - Highlight Phrase Intent
+    
+    private func routeHighlightPhrase(_ command: CommandJSON) async throws {
+        guard let userRequest = command.phrase else {
+            throw RouteError.missingParameters("Highlight phrase requires phrase")
+        }
+        
+        logger.info("Highlight phrase request: \"\(userRequest)\"")
+        onFeedback?("Finding text...")
+        
+        do {
+            // Step 1: Get the current text context
+            let context = try accessibilityBridge.getEditContext()
+            let contextText: String
+            
+            switch context {
+            case .selectedText(let text):
+                contextText = text
+            case .paragraphAroundCursor(let text, _):
+                contextText = text
+            case .entireDocument(let text):
+                contextText = text
+            }
+            
+            logger.info("Got context text (length: \(contextText.count))")
+            
+            // Step 2: Use GPT to find the exact phrase in context
+            let exactPhrase = try await gptService.findPhraseInContext(
+                context: contextText,
+                request: userRequest
+            )
+            
+            if exactPhrase.isEmpty {
+                throw RouteError.unsupportedAction("Phrase not found in text")
+            }
+            
+            logger.info("GPT found phrase: \"\(exactPhrase)\"")
+            
+            // Step 3: Select the exact phrase
+            try accessibilityBridge.selectPhrase(exactPhrase)
+            onFeedback?("Selected: \(exactPhrase)")
+            
+        } catch {
+            logger.error("Failed to highlight phrase: \(error)")
+            onFeedback?("Phrase not found")
+            throw error
+        }
     }
     
     // MARK: - None Intent

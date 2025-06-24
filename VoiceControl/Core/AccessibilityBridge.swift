@@ -768,6 +768,94 @@ class AccessibilityBridge {
         simulateKeyCommand(key: CGKeyCode(kVK_ANSI_A), modifiers: [.command])
         usleep(50000)
     }
+    
+    // MARK: - Phrase Selection
+    
+    /// Select a specific phrase in the current text context
+    func selectPhrase(_ targetPhrase: String) throws {
+        guard HotkeyManager.hasAccessibilityPermission() else {
+            throw AccessibilityError.noAccessibilityPermission
+        }
+        
+        let systemWideElement = AXUIElementCreateSystemWide()
+        var focusedElement: CFTypeRef?
+        
+        let result = AXUIElementCopyAttributeValue(
+            systemWideElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedElement
+        )
+        
+        guard result == .success,
+              let element = focusedElement else {
+            throw AccessibilityError.failedToGetFocusedElement
+        }
+        
+        let axElement = element as! AXUIElement
+        
+        // Get current cursor position
+        var rangeValue: CFTypeRef?
+        var currentPosition: Int = 0
+        if AXUIElementCopyAttributeValue(
+            axElement,
+            kAXSelectedTextRangeAttribute as CFString,
+            &rangeValue) == .success,
+           let axVal = rangeValue {
+            
+            let axValue = axVal as! AXValue
+            var cfRange = CFRange()
+            AXValueGetValue(axValue, .cfRange, &cfRange)
+            currentPosition = cfRange.location
+        }
+        
+        // Get the text context
+        let context = try getEditContext()
+        let searchText: String
+        let contextOffset: Int
+        
+        switch context {
+        case .selectedText(let text):
+            searchText = text
+            contextOffset = 0
+        case .paragraphAroundCursor(let text, let range):
+            searchText = text
+            contextOffset = range.location
+        case .entireDocument(let text):
+            searchText = text
+            contextOffset = 0
+        }
+        
+        // Search for the phrase (case-insensitive)
+        let lowercaseSearch = searchText.lowercased()
+        let lowercaseTarget = targetPhrase.lowercased()
+        
+        guard let range = lowercaseSearch.range(of: lowercaseTarget) else {
+            throw AccessibilityError.unsupportedOperation
+        }
+        
+        // Convert String.Index to character offset
+        let startOffset = lowercaseSearch.distance(from: lowercaseSearch.startIndex, to: range.lowerBound)
+        let phraseLength = targetPhrase.count
+        
+        // Calculate absolute position in document
+        let absoluteStart = contextOffset + startOffset
+        let absoluteEnd = absoluteStart + phraseLength
+        
+        // Create CFRange for selection
+        var selectionRange = CFRange(location: absoluteStart, length: phraseLength)
+        let axValue = AXValueCreate(.cfRange, &selectionRange)!
+        
+        // Set the selection
+        let setResult = AXUIElementSetAttributeValue(
+            axElement,
+            kAXSelectedTextRangeAttribute as CFString,
+            axValue
+        )
+        
+        if setResult != AXError.success {
+            throw AccessibilityError.failedToPerformAction
+        }
+    }
 }
 
 extension CGEventFlags {

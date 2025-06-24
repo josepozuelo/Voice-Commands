@@ -40,19 +40,44 @@ class CommandClassifier: ObservableObject {
         Map a spoken phrase to exactly one JSON object from the list below and return only that JSON.
         If nothing matches, output {"intent":"none"}.
         The user will speak in normal regular language, you should decipher it and extract specific intents from it.
-        If the user says copy, then send the keyboard shortcuts for copy, same if the user says refresh, paste, go to previous window, etc.
-        The user is in Mac.
+        The user is on macOS.
 
+        SHORTCUT INTENT - For keyboard shortcuts and system navigation:
         { "intent":"shortcut", "key":"C", "modifiers":["command","shift"] }
+        Examples: copy (cmd+C), paste (cmd+V), undo (cmd+Z), save (cmd+S), find (cmd+F),
+        switch apps (cmd+tab), switch windows (cmd+`), minimize window (cmd+M), 
+        close window (cmd+W), hide app (cmd+H), quit app (cmd+Q),
+        mission control (ctrl+up), show desktop (F11), spotlight (cmd+space),
+        next desktop/space (ctrl+right), previous desktop/space (ctrl+left),
+        screenshot (cmd+shift+4), force quit (cmd+option+escape),
+        page up (pageup), page down (pagedown), go to top (cmd+up), go to bottom (cmd+down)
+
+        SELECT INTENT - For text selection:
         { "intent":"select",   "unit":"char|word|sentence|paragraph|line|all",
                                 "direction":"this|next|prev", "count":1 }
+
+        MOVE INTENT - For cursor movement:
         { "intent":"move",     "direction":"up|down|left|right|forward|back",
-                                "unit":"char|word|sentence|paragraph|line|page|screen",
+                                "unit":"char|word|sentence|paragraph|line",
                                 "count":1 }
+
+        TAB INTENT - For browser tab management only:
         { "intent":"tab",      "action":"new|close|next|prev|show", "index":0 }
+        Examples: new tab, close tab, next tab, previous tab, go to tab 3
+
+        OVERLAY INTENT:
         { "intent":"overlay",  "action":"show|hide|click", "target":7 }
+
+        DICTATION INTENT:
         { "intent":"dictation","text":"Hello, how are you?" }
+
+        EDIT INTENT:
         { "intent":"edit",     "instruction":"Replace the second sentence with 'Goodbye.'" }
+        
+        HIGHLIGHT_PHRASE INTENT - For selecting specific text:
+        { "intent":"highlight_phrase", "phrase":"example text" }
+        Examples: highlight the word example, select the phrase hello world, 
+        highlight configuration, select John Smith
         """
         
         let messages: [[String: String]] = [

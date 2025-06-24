@@ -154,6 +154,5 @@ extension VADSilenceDetector: VADDelegate {
     func voiceDidContinue(withPCMFloat pcmFloatData: Data!) {
         // This provides real-time PCM data during voice activity
         // We can use this for live processing if needed
-        logger.debug("Voice continuing, received \(pcmFloatData.count) bytes")
     }
 }

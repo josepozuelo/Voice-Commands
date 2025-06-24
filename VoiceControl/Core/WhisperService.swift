@@ -302,6 +302,77 @@ class GPTService {
         
         return response
     }
+    
+    func findPhraseInContext(context: String, request: String) async throws -> String {
+        print("DEBUG: GPTService.findPhraseInContext - Context: '\(context)'")
+        print("DEBUG: GPTService.findPhraseInContext - Request: '\(request)'")
+        
+        let systemPrompt = """
+        You are a precise text finder. Given a text context and a user's highlighting request, find the EXACT text to highlight.
+        
+        Return ONLY a JSON object:
+        {"phrase": "<exact text from the context>"}
+        
+        Rules:
+        - The phrase MUST exist exactly in the context (same capitalization, punctuation, spacing)
+        - If the user asks for "the second occurrence", count from the beginning
+        - For semantic requests like "the URL" or "the email", identify the appropriate text
+        - If multiple matches exist and no specific one is requested, choose the first
+        - If the requested text doesn't exist, return {"phrase": ""}
+        
+        Examples:
+        - Request: "highlight configuration" → Find "configuration" in the text
+        - Request: "select the URL" → Find something like "https://example.com"
+        - Request: "highlight the second instance of error" → Find the 2nd "error"
+        - Request: "select the email address" → Find something like "user@example.com"
+        """
+        
+        let userPrompt = """
+        Context text:
+        \(context)
+        
+        User request: \(request)
+        
+        Find the exact text to highlight based on the request.
+        """
+        
+        let messages: [[String: String]] = [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": userPrompt]
+        ]
+        
+        let response = try await openAIService.chatCompletion(
+            messages: messages,
+            model: Config.gptModel,
+            temperature: 0,
+            maxTokens: 200
+        )
+        
+        print("DEBUG: GPTService.findPhraseInContext - GPT response: '\(response)'")
+        
+        // Parse JSON response
+        if let data = response.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let phrase = json["phrase"] as? String {
+            print("DEBUG: GPTService.findPhraseInContext - Parsed phrase: '\(phrase)'")
+            return phrase
+        }
+        
+        // If JSON parsing fails, try to extract the text between quotes
+        if let range = response.range(of: #""phrase":\s*"([^"]*)"#, options: .regularExpression) {
+            let match = String(response[range])
+            if let textRange = match.range(of: #":\s*"([^"]*)"#, options: .regularExpression) {
+                let text = String(match[textRange])
+                    .replacingOccurrences(of: #":\s*""#, with: "", options: .regularExpression)
+                    .dropLast() // Remove trailing quote
+                print("DEBUG: GPTService.findPhraseInContext - Extracted phrase via regex: '\(text)'")
+                return String(text)
+            }
+        }
+        
+        print("DEBUG: GPTService.findPhraseInContext - Failed to parse response")
+        throw OpenAIError.invalidResponse
+    }
 }
 
 // MARK: - WhisperService

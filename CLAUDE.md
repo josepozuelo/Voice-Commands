@@ -19,6 +19,10 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 
 ## Development Commands
 
+### Building the Project
+- **IMPORTANT**: Always build from the workspace, not the project file
+- Build command: `xcodebuild -workspace VoiceControl.xcworkspace -scheme VoiceControl -configuration Debug build`
+- The workspace includes necessary dependencies like RealTimeCutVADLibrary
 
 
 ### Environment Setup
