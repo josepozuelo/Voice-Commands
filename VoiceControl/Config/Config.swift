@@ -16,6 +16,13 @@ struct Config {
         static let formatDictation = true  // Flag to format dictated text with GPT
     }
     
+    // Dictation Mode Configuration
+    struct DictationMode {
+        static let maxRecordingDuration: TimeInterval = 600.0  // 10 minutes max recording
+        static let formatWithGPT = true  // Use GPT for light formatting
+        static let insertAtCursor = true  // Always insert at current cursor position
+    }
+    
     static let openAIKey: String = {
         // For development: First try environment variable
         if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {

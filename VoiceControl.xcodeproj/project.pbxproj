@@ -28,6 +28,7 @@
 		A1000018000000000000018 /* CommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021000000000000021 /* CommandRouter.swift */; };
 		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
 		ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */; };
+		0D891C68F422411B9A360438 /* DictationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5086141F4745FD9F5D981B /* DictationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +62,7 @@
 		D517DB392E0A4E070096ACC5 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D526D4BF2E0A04A00084C5EA /* VoiceControlRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceControlRelease.entitlements; sourceTree = "<group>"; };
 		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
+		DD5086141F4745FD9F5D981B /* DictationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				A5000010000000000000010 /* Command */,
+				A5000011000000000000011 /* Dictation */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -189,6 +192,14 @@
 				A2000008000000000000008 /* CommandMatcher.swift */,
 			);
 			path = Command;
+			sourceTree = "<group>";
+		};
+		A5000011000000000000011 /* Dictation */ = {
+			isa = PBXGroup;
+			children = (
+				DD5086141F4745FD9F5D981B /* DictationManager.swift */,
+			);
+			path = Dictation;
 			sourceTree = "<group>";
 		};
 		C94318640C96A3A629947FF1 /* Frameworks */ = {
@@ -339,7 +350,8 @@
 				A1000017000000000000017 /* CommandClassifier.swift in Sources */,
 				A1000018000000000000018 /* CommandRouter.swift in Sources */,
 				829E5290B9C84AED8D96E095 /* Logger.swift in Sources */,
-			);
+			
+				0D891C68F422411B9A360438 /* DictationManager.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

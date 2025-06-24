@@ -3,6 +3,7 @@ import Combine
 
 extension Notification.Name {
     static let startEditMode = Notification.Name("startEditMode")
+    static let startDictationMode = Notification.Name("startDictationMode")
 }
 
 struct CommandHUD: View {
@@ -49,6 +50,23 @@ struct CommandHUD: View {
                 .foregroundColor(.primary)
             
             Spacer()
+            
+            // Dictation Mode button
+            Button(action: {
+                NotificationCenter.default.post(name: .startDictationMode, object: nil)
+            }) {
+                Label("Dictation", systemImage: "text.append")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.2))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Dictation Mode (⌥⌘D)")
             
             // Edit Mode button
             Button(action: {
@@ -318,7 +336,7 @@ struct CommandHUD: View {
     private var minWidth: CGFloat {
         switch commandManager.hudState {
         case .idle:
-            return 250
+            return 350
         default:
             return 350
         }
@@ -327,7 +345,7 @@ struct CommandHUD: View {
     private var maxWidth: CGFloat {
         switch commandManager.hudState {
         case .idle:
-            return 300
+            return 400
         default:
             return Config.hudMaxWidth
         }
@@ -433,7 +451,7 @@ class CommandHUDWindowController: NSWindowController {
         let targetSize: NSSize
         switch commandManager.hudState {
         case .idle:
-            targetSize = NSSize(width: 300, height: 60)
+            targetSize = NSSize(width: 400, height: 60)
         case .listening, .processing:
             targetSize = NSSize(width: 400, height: 80)
         case .continuousListening:

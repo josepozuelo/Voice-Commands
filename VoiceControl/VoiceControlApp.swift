@@ -6,8 +6,10 @@ struct VoiceControlApp: App {
     @StateObject private var commandManager = CommandManager()
     @StateObject private var hotkeyManager = HotkeyManager()
     @StateObject private var editManager: EditManager
+    @StateObject private var dictationManager: DictationManager
     @State private var hudWindowController: CommandHUDWindowController?
     @State private var editModeHUDController: EditModeHUDWindowController?
+    @State private var dictationModeHUDController: DictationModeHUDWindowController?
     @State private var hasSetupApp = false
     @State private var hasShownPermissionDialog = false
     @State private var isCheckingPermissions = false
@@ -20,6 +22,13 @@ struct VoiceControlApp: App {
         let gptService = GPTService(openAIService: openAIService)
         
         _editManager = StateObject(wrappedValue: EditManager(
+            audioEngine: audioEngine,
+            whisperService: whisperService,
+            accessibilityBridge: accessibilityBridge,
+            gptService: gptService
+        ))
+        
+        _dictationManager = StateObject(wrappedValue: DictationManager(
             audioEngine: audioEngine,
             whisperService: whisperService,
             accessibilityBridge: accessibilityBridge,
@@ -57,6 +66,22 @@ struct VoiceControlApp: App {
                     testHotkeysManually()
                 }
                 .keyboardShortcut("t", modifiers: [.command])
+                
+                Divider()
+                
+                Button("Dictation Mode") {
+                    Task {
+                        await dictationManager.startDictation()
+                    }
+                }
+                .keyboardShortcut("d", modifiers: [.option, .command])
+                
+                Button("Edit Mode") {
+                    Task {
+                        await editManager.startEditing()
+                    }
+                }
+                .keyboardShortcut("e", modifiers: [.option, .command])
             }
         }
     }
@@ -76,6 +101,7 @@ struct VoiceControlApp: App {
     private func setupHUD() {
         hudWindowController = CommandHUDWindowController(commandManager: commandManager)
         editModeHUDController = EditModeHUDWindowController(editManager: editManager)
+        dictationModeHUDController = DictationModeHUDWindowController(manager: dictationManager)
     }
     
     private func connectComponents() {
@@ -83,6 +109,35 @@ struct VoiceControlApp: App {
         
         // Setup edit manager to listen to hotkey events
         editManager.setupHotkeyListener(hotkeyManager: hotkeyManager)
+        
+        // Setup dictation manager to listen to hotkey events
+        hotkeyManager.dictationHotkeyPressed
+            .sink { [weak dictationManager] in
+                Task {
+                    await dictationManager?.startDictation()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
+        
+        // Setup dictation manager to listen to notification from HUD button
+        NotificationCenter.default.publisher(for: .startDictationMode)
+            .sink { [weak dictationManager] _ in
+                Task {
+                    await dictationManager?.startDictation()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
+        
+        // Setup dictation HUD visibility
+        dictationManager.$showHUD
+            .sink { [weak dictationModeHUDController] show in
+                if show {
+                    dictationModeHUDController?.showWindow(nil)
+                } else {
+                    dictationModeHUDController?.close()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
     }
     
     private func checkAccessibilityPermission() {
@@ -199,7 +254,10 @@ struct VoiceControlApp: App {
         alert.informativeText = """
         Testing hotkeys now...
         
-        Please try pressing Control+Shift+V.
+        Available hotkeys:
+        • Control+Shift+V - Voice Commands
+        • Option+Command+D - Dictation Mode
+        • Option+Command+E - Edit Mode
         
         Watch the console for debug messages to see if hotkeys are working.
         If you see key events logged, the hotkeys are functioning correctly!
