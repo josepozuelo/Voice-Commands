@@ -66,7 +66,7 @@ struct CommandHUD: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("Dictation Mode (⌥⌘D)")
+            .help("Dictation Mode (⌃K)")
             
             // Edit Mode button
             Button(action: {
@@ -83,7 +83,7 @@ struct CommandHUD: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("Edit Mode (⌥⌘E)")
+            .help("Edit Mode (⌃L)")
             
             // Manual trigger button
             Button(action: {
@@ -102,7 +102,7 @@ struct CommandHUD: View {
                     isHovering = hovering
                 }
             }
-            .help("Start Voice Command (⌃⇧V)")
+            .help("Start Voice Command (⌃J)")
         }
     }
     

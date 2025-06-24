@@ -146,6 +146,44 @@ class AccessibilityBridge {
         simulateKeyboardInput(text)
     }
     
+    func insertTextAtCursor(_ text: String) throws {
+        guard HotkeyManager.hasAccessibilityPermission() else {
+            throw AccessibilityError.noAccessibilityPermission
+        }
+        
+        let systemWideElement = AXUIElementCreateSystemWide()
+        var focusedElement: CFTypeRef?
+        
+        let result = AXUIElementCopyAttributeValue(
+            systemWideElement,
+            kAXFocusedUIElementAttribute as CFString,
+            &focusedElement
+        )
+        
+        guard result == .success,
+              let element = focusedElement else {
+            throw AccessibilityError.failedToGetFocusedElement
+        }
+        
+        // Try to use the native accessibility method for inserting text at cursor
+        let insertResult = AXUIElementPerformAction(
+            element as! AXUIElement,
+            "AXInsertTextAtCursor" as CFString
+        )
+        
+        if insertResult == .success {
+            // If the action is supported, set the text to insert
+            AXUIElementSetAttributeValue(
+                element as! AXUIElement,
+                "AXInsertionText" as CFString,
+                text as CFTypeRef
+            )
+        } else {
+            // Fallback to keyboard simulation if the action is not supported
+            simulateKeyboardInput(text)
+        }
+    }
+    
     func selectText(matching pattern: SelectionType) throws {
         guard HotkeyManager.hasAccessibilityPermission() else {
             throw AccessibilityError.noAccessibilityPermission

@@ -88,7 +88,7 @@ class DictationManager: ObservableObject {
                 transcribedText = try await gptService.formatDictation(transcribedText)
             }
             
-            try accessibilityBridge.replaceSelection(with: transcribedText)
+            try accessibilityBridge.insertTextAtCursor(transcribedText)
             
             state = .idle
             showHUD = false
@@ -192,7 +192,7 @@ struct DictationModeHUD: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            Text("Press ⌥⌘D to stop")
+            Text("Press ⌃K to stop")
                 .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.6))
         }

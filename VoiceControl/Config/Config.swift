@@ -2,9 +2,9 @@ import Foundation
 import CoreGraphics
 
 struct Config {
-    static let dictationHotkey = "⌥⌘D"
-    static let editHotkey = "⌥⌘E"
-    static let commandHotkey = "⌃⇧V"
+    static let dictationHotkey = "⌃K"
+    static let editHotkey = "⌃L"
+    static let commandHotkey = "⌃J"
     
     // Edit Mode Configuration
     struct EditMode {
@@ -90,10 +90,10 @@ struct Config {
     static let audioBufferSize: Int = 1024
     
     enum HotkeyCode {
-        // Key codes from Carbon framework: kVK_ANSI_C = 0x08, kVK_ANSI_D = 0x02, kVK_ANSI_E = 0x0E
-        // Modifiers are no longer used since we check for Command and Option individually
-        static let controlShiftV: (keyCode: UInt16, modifiers: UInt32) = (0x09, 0x020100)
-        static let optionCommandD: (keyCode: UInt16, modifiers: UInt32) = (0x02, 0x180000)
-        static let optionCommandE: (keyCode: UInt16, modifiers: UInt32) = (0x0E, 0x180000)
+        // Key codes from Carbon framework: kVK_ANSI_J = 0x26, kVK_ANSI_K = 0x28, kVK_ANSI_L = 0x25
+        // Control modifier = 0x040000
+        static let controlJ: (keyCode: UInt16, modifiers: UInt32) = (0x26, 0x040000)
+        static let controlK: (keyCode: UInt16, modifiers: UInt32) = (0x28, 0x040000)
+        static let controlL: (keyCode: UInt16, modifiers: UInt32) = (0x25, 0x040000)
     }
 }

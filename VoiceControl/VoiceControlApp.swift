@@ -74,14 +74,14 @@ struct VoiceControlApp: App {
                         await dictationManager.startDictation()
                     }
                 }
-                .keyboardShortcut("d", modifiers: [.option, .command])
+                .keyboardShortcut("k", modifiers: [.control])
                 
                 Button("Edit Mode") {
                     Task {
                         await editManager.startEditing()
                     }
                 }
-                .keyboardShortcut("e", modifiers: [.option, .command])
+                .keyboardShortcut("l", modifiers: [.control])
             }
         }
     }
@@ -255,9 +255,9 @@ struct VoiceControlApp: App {
         Testing hotkeys now...
         
         Available hotkeys:
-        • Control+Shift+V - Voice Commands
-        • Option+Command+D - Dictation Mode
-        • Option+Command+E - Edit Mode
+        • Control+J - Voice Commands
+        • Control+K - Dictation Mode
+        • Control+L - Edit Mode
         
         Watch the console for debug messages to see if hotkeys are working.
         If you see key events logged, the hotkeys are functioning correctly!
