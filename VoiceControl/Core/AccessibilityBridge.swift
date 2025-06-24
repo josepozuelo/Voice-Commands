@@ -376,17 +376,93 @@ class AccessibilityBridge {
         
         let keyCode: CGKeyCode
         switch key.uppercased() {
+        // Letters A-Z
         case "A": keyCode = CGKeyCode(kVK_ANSI_A)
+        case "B": keyCode = CGKeyCode(kVK_ANSI_B)
         case "C": keyCode = CGKeyCode(kVK_ANSI_C)
-        case "V": keyCode = CGKeyCode(kVK_ANSI_V)
-        case "X": keyCode = CGKeyCode(kVK_ANSI_X)
-        case "Z": keyCode = CGKeyCode(kVK_ANSI_Z)
-        case "S": keyCode = CGKeyCode(kVK_ANSI_S)
+        case "D": keyCode = CGKeyCode(kVK_ANSI_D)
+        case "E": keyCode = CGKeyCode(kVK_ANSI_E)
         case "F": keyCode = CGKeyCode(kVK_ANSI_F)
-        case "`": keyCode = CGKeyCode(kVK_ANSI_Grave)
-        case "⇥", "TAB": keyCode = CGKeyCode(kVK_Tab)
-        case "⌫", "DELETE": keyCode = CGKeyCode(kVK_Delete)
-        default: keyCode = CGKeyCode(kVK_ANSI_A)
+        case "G": keyCode = CGKeyCode(kVK_ANSI_G)
+        case "H": keyCode = CGKeyCode(kVK_ANSI_H)
+        case "I": keyCode = CGKeyCode(kVK_ANSI_I)
+        case "J": keyCode = CGKeyCode(kVK_ANSI_J)
+        case "K": keyCode = CGKeyCode(kVK_ANSI_K)
+        case "L": keyCode = CGKeyCode(kVK_ANSI_L)
+        case "M": keyCode = CGKeyCode(kVK_ANSI_M)
+        case "N": keyCode = CGKeyCode(kVK_ANSI_N)
+        case "O": keyCode = CGKeyCode(kVK_ANSI_O)
+        case "P": keyCode = CGKeyCode(kVK_ANSI_P)
+        case "Q": keyCode = CGKeyCode(kVK_ANSI_Q)
+        case "R": keyCode = CGKeyCode(kVK_ANSI_R)
+        case "S": keyCode = CGKeyCode(kVK_ANSI_S)
+        case "T": keyCode = CGKeyCode(kVK_ANSI_T)
+        case "U": keyCode = CGKeyCode(kVK_ANSI_U)
+        case "V": keyCode = CGKeyCode(kVK_ANSI_V)
+        case "W": keyCode = CGKeyCode(kVK_ANSI_W)
+        case "X": keyCode = CGKeyCode(kVK_ANSI_X)
+        case "Y": keyCode = CGKeyCode(kVK_ANSI_Y)
+        case "Z": keyCode = CGKeyCode(kVK_ANSI_Z)
+            
+        // Numbers 0-9
+        case "0": keyCode = CGKeyCode(kVK_ANSI_0)
+        case "1": keyCode = CGKeyCode(kVK_ANSI_1)
+        case "2": keyCode = CGKeyCode(kVK_ANSI_2)
+        case "3": keyCode = CGKeyCode(kVK_ANSI_3)
+        case "4": keyCode = CGKeyCode(kVK_ANSI_4)
+        case "5": keyCode = CGKeyCode(kVK_ANSI_5)
+        case "6": keyCode = CGKeyCode(kVK_ANSI_6)
+        case "7": keyCode = CGKeyCode(kVK_ANSI_7)
+        case "8": keyCode = CGKeyCode(kVK_ANSI_8)
+        case "9": keyCode = CGKeyCode(kVK_ANSI_9)
+            
+        // Arrow keys
+        case "UP", "UPARROW": keyCode = CGKeyCode(kVK_UpArrow)
+        case "DOWN", "DOWNARROW": keyCode = CGKeyCode(kVK_DownArrow)
+        case "LEFT", "LEFTARROW": keyCode = CGKeyCode(kVK_LeftArrow)
+        case "RIGHT", "RIGHTARROW": keyCode = CGKeyCode(kVK_RightArrow)
+            
+        // Special keys
+        case "SPACE", " ": keyCode = CGKeyCode(kVK_Space)
+        case "ENTER", "RETURN": keyCode = CGKeyCode(kVK_Return)
+        case "TAB", "⇥": keyCode = CGKeyCode(kVK_Tab)
+        case "DELETE", "⌫", "BACKSPACE": keyCode = CGKeyCode(kVK_Delete)
+        case "ESCAPE", "ESC": keyCode = CGKeyCode(kVK_Escape)
+        case "HOME": keyCode = CGKeyCode(kVK_Home)
+        case "END": keyCode = CGKeyCode(kVK_End)
+        case "PAGEUP", "PGUP": keyCode = CGKeyCode(kVK_PageUp)
+        case "PAGEDOWN", "PGDOWN": keyCode = CGKeyCode(kVK_PageDown)
+            
+        // Function keys
+        case "F1": keyCode = CGKeyCode(kVK_F1)
+        case "F2": keyCode = CGKeyCode(kVK_F2)
+        case "F3": keyCode = CGKeyCode(kVK_F3)
+        case "F4": keyCode = CGKeyCode(kVK_F4)
+        case "F5": keyCode = CGKeyCode(kVK_F5)
+        case "F6": keyCode = CGKeyCode(kVK_F6)
+        case "F7": keyCode = CGKeyCode(kVK_F7)
+        case "F8": keyCode = CGKeyCode(kVK_F8)
+        case "F9": keyCode = CGKeyCode(kVK_F9)
+        case "F10": keyCode = CGKeyCode(kVK_F10)
+        case "F11": keyCode = CGKeyCode(kVK_F11)
+        case "F12": keyCode = CGKeyCode(kVK_F12)
+            
+        // Punctuation and symbols
+        case "`", "GRAVE": keyCode = CGKeyCode(kVK_ANSI_Grave)
+        case "-", "MINUS": keyCode = CGKeyCode(kVK_ANSI_Minus)
+        case "=", "EQUALS": keyCode = CGKeyCode(kVK_ANSI_Equal)
+        case "[", "LEFTBRACKET": keyCode = CGKeyCode(kVK_ANSI_LeftBracket)
+        case "]", "RIGHTBRACKET": keyCode = CGKeyCode(kVK_ANSI_RightBracket)
+        case "\\", "BACKSLASH": keyCode = CGKeyCode(kVK_ANSI_Backslash)
+        case ";", "SEMICOLON": keyCode = CGKeyCode(kVK_ANSI_Semicolon)
+        case "'", "QUOTE": keyCode = CGKeyCode(kVK_ANSI_Quote)
+        case ",", "COMMA": keyCode = CGKeyCode(kVK_ANSI_Comma)
+        case ".", "PERIOD": keyCode = CGKeyCode(kVK_ANSI_Period)
+        case "/", "SLASH": keyCode = CGKeyCode(kVK_ANSI_Slash)
+            
+        default: 
+            print("Warning: Unknown key '\(key)', defaulting to 'A'")
+            keyCode = CGKeyCode(kVK_ANSI_A)
         }
         
         return (keyCode, modifiers)
@@ -422,13 +498,13 @@ class AccessibilityBridge {
         // For edit mode with context, we'll use a smart approach
         if let context = editContext {
             switch context {
-            case .selectedText(let originalText):
+            case .selectedText(_):
                 // User had text selected, just paste the replacement
                 print("DEBUG: AccessibilityBridge - Replacing selected text directly")
                 pasteText(corrected)
                 return
                 
-            case .paragraphAroundCursor(let originalText, let range):
+            case .paragraphAroundCursor(_, let range):
                 // Use direct AX API to replace text at the specific range
                 print("DEBUG: AccessibilityBridge - Using smart range replacement for paragraph")
                 print("DEBUG: AccessibilityBridge - Range: location=\(range.location), length=\(range.length)")
@@ -795,7 +871,6 @@ class AccessibilityBridge {
         
         // Get current cursor position
         var rangeValue: CFTypeRef?
-        var currentPosition: Int = 0
         if AXUIElementCopyAttributeValue(
             axElement,
             kAXSelectedTextRangeAttribute as CFString,
@@ -805,7 +880,6 @@ class AccessibilityBridge {
             let axValue = axVal as! AXValue
             var cfRange = CFRange()
             AXValueGetValue(axValue, .cfRange, &cfRange)
-            currentPosition = cfRange.location
         }
         
         // Get the text context
@@ -839,7 +913,6 @@ class AccessibilityBridge {
         
         // Calculate absolute position in document
         let absoluteStart = contextOffset + startOffset
-        let absoluteEnd = absoluteStart + phraseLength
         
         // Create CFRange for selection
         var selectionRange = CFRange(location: absoluteStart, length: phraseLength)

@@ -47,10 +47,13 @@ class CommandClassifier: ObservableObject {
         Examples: copy (cmd+C), paste (cmd+V), undo (cmd+Z), save (cmd+S), find (cmd+F),
         switch apps (cmd+tab), switch windows (cmd+`), minimize window (cmd+M), 
         close window (cmd+W), hide app (cmd+H), quit app (cmd+Q),
-        mission control (ctrl+up), show desktop (F11), spotlight (cmd+space),
+        mission control/explode view (ctrl+up), show desktop (F11), spotlight (cmd+space),
         next desktop/space (ctrl+right), previous desktop/space (ctrl+left),
         screenshot (cmd+shift+4), force quit (cmd+option+escape),
-        page up (pageup), page down (pagedown), go to top (cmd+up), go to bottom (cmd+down)
+        page up (pageup), page down (pagedown), go to top (cmd+up), go to bottom (cmd+down),
+        go to end of page (pagedown), go to top of page (pageup)
+        
+        IMPORTANT: For arrow keys use "up", "down", "left", "right" (not "uparrow" or "arrow")
 
         SELECT INTENT - For text selection:
         { "intent":"select",   "unit":"char|word|sentence|paragraph|line|all",
@@ -60,6 +63,7 @@ class CommandClassifier: ObservableObject {
         { "intent":"move",     "direction":"up|down|left|right|forward|back",
                                 "unit":"char|word|sentence|paragraph|line",
                                 "count":1 }
+        Note: For page navigation use shortcut intent with pageup/pagedown keys
 
         TAB INTENT - For browser tab management only:
         { "intent":"tab",      "action":"new|close|next|prev|show", "index":0 }
