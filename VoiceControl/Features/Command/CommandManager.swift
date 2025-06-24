@@ -39,7 +39,6 @@ class CommandManager: ObservableObject {
     private var hotkeyManager: HotkeyManager?
     
     private var cancellables = Set<AnyCancellable>()
-    private var isProcessingChunk = false  // Guard against concurrent chunk processing
     
     init() {
         self.commandRouter = CommandRouter(accessibilityBridge: accessibilityBridge)
@@ -67,7 +66,6 @@ class CommandManager: ObservableObject {
             .store(in: &cancellables)
         
         whisperService.$transcriptionText
-            .removeDuplicates() // Ignore duplicate values
             .sink { [weak self] text in
                 // Handle both empty and non-empty transcriptions
                 self?.handleTranscriptionResult(text)
@@ -221,13 +219,6 @@ class CommandManager: ObservableObject {
             return
         }
         
-        // Guard against concurrent processing
-        guard !isProcessingChunk else {
-            return
-        }
-        
-        isProcessingChunk = true
-        
         // Temporarily change state to processing while keeping continuous mode active
         hudState = .processing
         whisperService.startTranscription(audioData: audioChunk)
@@ -235,9 +226,6 @@ class CommandManager: ObservableObject {
     
     private func handleTranscriptionResult(_ text: String) {
         print("🎤 TRANSCRIPTION: Received result: '\(text)' (length: \(text.count))")
-        
-        // Reset processing flag for continuous mode
-        isProcessingChunk = false
         
         // Check if we got empty transcription
         if text.isEmpty {

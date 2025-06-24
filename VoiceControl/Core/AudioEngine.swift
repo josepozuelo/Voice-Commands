@@ -40,6 +40,10 @@ class AudioEngine: NSObject, ObservableObject {
     // VAD-based chunking
     private var vadChunker = VADChunker()
     
+    // Debug counters
+    private var processedBufferCount = 0
+    private var totalProcessedSamples = 0
+    
     override init() {
         super.init()
         setupAudioSession()
@@ -47,7 +51,8 @@ class AudioEngine: NSObject, ObservableObject {
         // Setup VAD chunker callback
         vadChunker.onChunkReady = { [weak self] chunkData in
             guard let self = self else { return }
-            print("DEBUG: VADChunker emitted chunk of size: \(chunkData.count) bytes")
+            let seconds = Float(chunkData.count) / (16000.0 * 4.0)
+            print("🎤 VOICE DETECTED: Sending \(String(format: "%.1f", seconds))s chunk to Whisper")
             self.audioChunkPublisher.send(chunkData)
         }
     }
@@ -68,6 +73,8 @@ class AudioEngine: NSObject, ObservableObject {
     
     func startRecording() {
         guard !isRecording else { return }
+        
+        print("🎙️ AUDIO ENGINE: Starting recording (simple mode)")
         
         audioBuffer.removeAll()
         isContinuousMode = false
@@ -99,6 +106,8 @@ class AudioEngine: NSObject, ObservableObject {
     
     func startRecording(enableSilenceDetection: Bool, maxDuration: TimeInterval? = nil) async throws {
         guard !isRecording else { return }
+        
+        print("🎙️ AUDIO ENGINE: Starting recording (silence detection: \(enableSilenceDetection))")
         
         audioBuffer.removeAll()
         isContinuousMode = enableSilenceDetection
@@ -149,6 +158,10 @@ class AudioEngine: NSObject, ObservableObject {
         audioBuffer.removeAll()
         isContinuousMode = true
         
+        // Reset debug counters
+        processedBufferCount = 0
+        totalProcessedSamples = 0
+        
         // Reset VAD chunker to ensure clean state
         vadChunker.reset()
         
@@ -172,7 +185,6 @@ class AudioEngine: NSObject, ObservableObject {
         do {
             try audioEngine.start()
             isRecording = true
-            print("DEBUG: Started continuous recording with clean buffers")
         } catch {
             print("Failed to start audio engine: \(error)")
         }
@@ -191,6 +203,8 @@ class AudioEngine: NSObject, ObservableObject {
         
         // Send any recorded audio if not in continuous mode
         if !isContinuousMode && !audioBuffer.isEmpty {
+            let seconds = Float(audioBuffer.count) / (16000.0 * 4.0)
+            print("🎙️ AUDIO ENGINE: Recording complete, sending \(String(format: "%.1f", seconds))s of audio")
             recordingCompletePublisher.send(audioBuffer)
         }
         
@@ -240,6 +254,15 @@ class AudioEngine: NSObject, ObservableObject {
             // Convert to Float array for VADChunker
             let floatArray = convertedData.withUnsafeBytes { bytes in
                 Array(bytes.bindMemory(to: Float.self))
+            }
+            
+            // Update debug counters
+            processedBufferCount += 1
+            totalProcessedSamples += floatArray.count
+            
+            // Log every ~1 second of audio
+            if processedBufferCount % 50 == 0 { // ~50 buffers = ~1 second at typical buffer sizes
+                let totalSeconds = Float(totalProcessedSamples) / 16000.0
             }
             
             // Process with VAD chunker

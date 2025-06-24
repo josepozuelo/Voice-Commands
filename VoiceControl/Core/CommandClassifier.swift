@@ -33,10 +33,16 @@ class CommandClassifier: ObservableObject {
     }
     
     func classify(_ transcript: String) async throws -> CommandJSON {
+        print("🤖 GPT CALL - CommandClassifier.classify() called with transcript: '\(transcript)'")
+        print("🤖 GPT CALL - Timestamp: \(Date())")
+        
         let systemPrompt = """
         Map a spoken phrase to exactly one JSON object from the list below and return only that JSON.
         If nothing matches, output {"intent":"none"}.
-        
+        The user will speak in normal regular language, you should decipher it and extract specific intents from it.
+        If the user says copy, then send the keyboard shortcuts for copy, same if the user says refresh, paste, go to previous window, etc.
+        The user is in Mac.
+
         { "intent":"shortcut", "key":"C", "modifiers":["command","shift"] }
         { "intent":"select",   "unit":"char|word|sentence|paragraph|line|all",
                                 "direction":"this|next|prev", "count":1 }
@@ -54,17 +60,25 @@ class CommandClassifier: ObservableObject {
             ["role": "user", "content": transcript]
         ]
         
+        print("🤖 GPT CALL - Sending to OpenAI API...")
         let content = try await openAIService.chatCompletion(
             messages: messages,
-            model: "gpt-4o-mini",
+            model: Config.gptModel,
             temperature: 0,
             maxTokens: 150
         )
+        print("🤖 GPT CALL - Received response from OpenAI")
+        
+        print("DEBUG: CommandClassifier - Input: '\(transcript)'")
+        print("DEBUG: CommandClassifier - GPT response: '\(content)'")
         
         guard let commandData = content.data(using: .utf8),
               let commandJSON = try? JSONDecoder().decode(CommandJSON.self, from: commandData) else {
+            print("DEBUG: CommandClassifier - Failed to parse GPT response as CommandJSON")
             throw ClassificationError.noValidCommand
         }
+        
+        print("DEBUG: CommandClassifier - Parsed command: intent=\(commandJSON.intent)")
         
         return commandJSON
     }

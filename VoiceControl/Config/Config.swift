@@ -10,7 +10,7 @@ struct Config {
     struct EditMode {
         static let maxRecordingDuration: TimeInterval = 600.0  // 10 minutes max recording
         static let autoSelectParagraph = true  // Auto-select paragraph if no selection
-        static let gptModel = "gpt-4o-mini"  // GPT model for text editing
+        static let gptModel = "gpt-4.1-mini-2025-04-14"  // GPT model for text editing
         static let gptTemperature = 0.3  // Low temperature for consistent edits
         static let gptMaxTokens = 2000  // Max tokens for response
         static let formatDictation = true  // Flag to format dictated text with GPT
@@ -19,12 +19,20 @@ struct Config {
     static let openAIKey: String = {
         // For development: First try environment variable
         if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
+            print("🔑 Config: Using OpenAI API key from environment variable")
             return envKey
         }
         
         // For production: Read from Info.plist (configured via xcconfig)
-        if let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OpenAIAPIKey") as? String, !bundleKey.isEmpty {
-            return bundleKey
+        if let bundleKey = Bundle.main.object(forInfoDictionaryKey: "OpenAIAPIKey") as? String {
+            if !bundleKey.isEmpty {
+                print("🔑 Config: Using OpenAI API key from Info.plist")
+                return bundleKey
+            } else {
+                print("⚠️ Config: Found empty OpenAI API key in Info.plist")
+            }
+        } else {
+            print("⚠️ Config: No OpenAI API key found in Info.plist")
         }
         
         // Fallback to config file in app support directory (for user-provided keys)
@@ -34,13 +42,15 @@ struct Config {
         if let data = try? Data(contentsOf: configURL),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let apiKey = json["openai_api_key"] as? String {
+            print("🔑 Config: Using OpenAI API key from config.json")
             return apiKey
         }
         
+        print("❌ Config: No OpenAI API key found in any location!")
         return ""
     }()
     static let whisperModel = "whisper-1"
-    static let gptModel = "gpt-4-turbo-preview"
+    static let gptModel = "gpt-4.1-mini-2025-04-14"
     
     static let silenceThreshold: TimeInterval = 1.0
     static let fuzzyMatchThreshold: Double = 0.85

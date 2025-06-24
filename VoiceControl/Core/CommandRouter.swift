@@ -268,6 +268,8 @@ class CommandRouter {
     
     private func handleNoneIntent() {
         logger.info("No command detected")
+        print("🔄 ROUTER: handleNoneIntent called - GPT returned intent='none'")
+        print("🔄 ROUTER: Calling onFeedback with 'Please repeat your command'")
         onFeedback?("Please repeat your command")
     }
 }

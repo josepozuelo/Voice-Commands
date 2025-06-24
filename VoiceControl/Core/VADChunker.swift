@@ -30,6 +30,7 @@ class VADChunker {
             Data(buffer: pointer)
         }
         
+        
         // Process with VAD detector
         // The VADSilenceDetector will handle all the voice detection logic
         // and call our callback when a complete speech segment is detected

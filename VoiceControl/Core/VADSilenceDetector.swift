@@ -93,10 +93,9 @@ class VADSilenceDetector: NSObject {
             }
         }
         
-        // Always accumulate audio when we're in speech or trailing silence state
-        if state == .speechDetected || state == .trailingSilence {
-            currentAudioChunk.append(audioData)
-        }
+        // ALWAYS accumulate audio regardless of state to ensure no audio is lost
+        currentAudioChunk.append(audioData)
+        
         
         return .continue
     }
@@ -116,8 +115,11 @@ extension VADSilenceDetector: VADDelegate {
         if state == .idle {
             state = .speechDetected
             speechStartTime = Date()
-            currentAudioChunk = Data()
+            // Don't clear currentAudioChunk - it already contains pre-speech audio
             isProcessingVoice = true
+            
+            let chunkSize = Float(currentAudioChunk.count) / (16000.0 * 4.0)
+            logger.info("Speech detected with \(chunkSize, format: .fixed(precision: 2))s of pre-speech audio")
         }
     }
     
@@ -131,12 +133,13 @@ extension VADSilenceDetector: VADDelegate {
             let speechDuration = Date().timeIntervalSince(speechStart)
             
             if speechDuration >= Config.vadMinSpeechDuration {
-                logger.info("Speech segment complete: duration=\(speechDuration)s")
+                let totalChunkSize = Float(currentAudioChunk.count) / (16000.0 * 4.0)
+                logger.info("Speech segment complete: duration=\(speechDuration)s, total chunk=\(totalChunkSize, format: .fixed(precision: 2))s")
                 
-                // The wavData from VAD already contains the complete voice segment
-                // But we'll use our accumulated chunk for consistency
-                if !currentAudioChunk.isEmpty {
-                    onChunkReady?(currentAudioChunk)
+                // Use our accumulated chunk which includes pre-speech audio
+                if !self.currentAudioChunk.isEmpty {
+                    logger.info("Emitting chunk with \(self.currentAudioChunk.count) bytes")
+                    onChunkReady?(self.currentAudioChunk)
                 }
                 
                 // Reset state

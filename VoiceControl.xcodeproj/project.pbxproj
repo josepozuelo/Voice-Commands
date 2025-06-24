@@ -57,6 +57,8 @@
 		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_VoiceControl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D23F5673E56E437DA4FF79C0 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControl/Utils/Logger.swift; sourceTree = "<group>"; };
+		D517DB382E0A4DF80096ACC5 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		D517DB392E0A4E070096ACC5 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D526D4BF2E0A04A00084C5EA /* VoiceControlRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceControlRelease.entitlements; sourceTree = "<group>"; };
 		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -90,6 +92,8 @@
 				D526D4BE2E0A01640084C5EA /* Recovered References */,
 				0D3B32C7C900BDCE30AE10FA /* Pods */,
 				C94318640C96A3A629947FF1 /* Frameworks */,
+				D517DB382E0A4DF80096ACC5 /* Release.xcconfig */,
+				D517DB392E0A4E070096ACC5 /* Debug.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -343,7 +347,7 @@
 /* Begin XCBuildConfiguration section */
 		B2000001000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */;
+			baseConfigurationReference = D517DB392E0A4E070096ACC5 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -407,7 +411,7 @@
 		};
 		B2000001000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */;
+			baseConfigurationReference = D517DB382E0A4DF80096ACC5 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -463,7 +467,7 @@
 		};
 		B3000001000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */;
+			baseConfigurationReference = D517DB392E0A4E070096ACC5 /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -495,7 +499,7 @@
 		};
 		B3000001000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */;
+			baseConfigurationReference = D517DB382E0A4DF80096ACC5 /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
