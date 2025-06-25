@@ -30,6 +30,7 @@ class CommandManager: ObservableObject {
     @Published var error: Error?
     @Published var lastTranscription = ""
     @Published var isContinuousMode = false
+    @Published var wasInContinuousMode = false
     
     private let audioEngine = AudioEngine()
     private let whisperService = WhisperService()
@@ -77,6 +78,16 @@ class CommandManager: ObservableObject {
                 if let error = error {
                     self?.handleError(error)
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for resume continuous mode notification
+        NotificationCenter.default.publisher(for: .resumeContinuousMode)
+            .sink { [weak self] _ in
+                guard let self = self, self.wasInContinuousMode else { return }
+                print("📥 CommandManager: Resuming continuous mode after dictation/edit")
+                self.startContinuousMode()
+                self.wasInContinuousMode = false
             }
             .store(in: &cancellables)
     }
@@ -430,17 +441,19 @@ class EditManager: ObservableObject {
             .store(in: &cancellables)
     }
     
-    func setupHotkeyListener(hotkeyManager: HotkeyManager) {
+    func setupHotkeyListener(hotkeyManager: HotkeyManager, commandManager: CommandManager) {
         // Connect Edit Mode hotkey
         hotkeyManager.editHotkeyPressed
-            .sink { [weak self] in
+            .sink { [weak self, weak commandManager] in
+                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                 self?.startEditing()
             }
             .store(in: &cancellables)
         
         // Connect Edit Mode button from HUD
         NotificationCenter.default.publisher(for: .startEditMode)
-            .sink { [weak self] _ in
+            .sink { [weak self, weak commandManager] _ in
+                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                 self?.startEditing()
             }
             .store(in: &cancellables)
@@ -514,6 +527,9 @@ class EditManager: ObservableObject {
         Task {
             await audioEngine.stopRecording()
         }
+        
+        // Return to continuous mode if it was active before
+        NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
     }
     
     private func processEditInstructions() async {
@@ -549,6 +565,9 @@ class EditManager: ObservableObject {
             
             state = .idle
             resetState()
+            
+            // Return to continuous mode if it was active before
+            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
             
         } catch {
             print("DEBUG: Edit Mode - Error: \(error)")

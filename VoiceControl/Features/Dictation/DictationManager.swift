@@ -72,6 +72,9 @@ class DictationManager: ObservableObject {
         await audioEngine.stopRecording()
         state = .idle
         showHUD = false
+        
+        // Return to continuous mode if it was active before
+        NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
     }
     
     private func processDictation() async {
@@ -92,6 +95,9 @@ class DictationManager: ObservableObject {
             
             state = .idle
             showHUD = false
+            
+            // Return to continuous mode if it was active before
+            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
         } catch {
             state = .error("Transcription failed: \(error.localizedDescription)")
         }

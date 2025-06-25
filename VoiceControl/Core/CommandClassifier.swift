@@ -83,6 +83,13 @@ class CommandClassifier: ObservableObject {
         { "intent":"highlight_phrase", "phrase":"example text" }
         Examples: highlight the word example, select the phrase hello world, 
         highlight configuration, select John Smith
+        
+        MODE_SWITCH INTENT - For switching between input modes:
+        { "intent":"mode_switch", "mode":"dictation|edit|command" }
+        Examples: 
+        - "start dictation", "dictation mode", "begin dictating" → mode: "dictation"
+        - "edit mode", "start editing", "edit text" → mode: "edit"
+        - "command mode", "back to commands" → mode: "command"
         """
         
         let messages: [[String: String]] = [

@@ -78,7 +78,7 @@ struct VoiceControlApp: App {
                 
                 Button("Edit Mode") {
                     Task {
-                        await editManager.startEditing()
+                        editManager.startEditing()
                     }
                 }
                 .keyboardShortcut("l", modifiers: [.control])
@@ -108,11 +108,12 @@ struct VoiceControlApp: App {
         commandManager.setHotkeyManager(hotkeyManager)
         
         // Setup edit manager to listen to hotkey events
-        editManager.setupHotkeyListener(hotkeyManager: hotkeyManager)
+        editManager.setupHotkeyListener(hotkeyManager: hotkeyManager, commandManager: commandManager)
         
         // Setup dictation manager to listen to hotkey events
         hotkeyManager.dictationHotkeyPressed
-            .sink { [weak dictationManager] in
+            .sink { [weak dictationManager, weak commandManager] in
+                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                 Task {
                     await dictationManager?.startDictation()
                 }
@@ -121,7 +122,8 @@ struct VoiceControlApp: App {
         
         // Setup dictation manager to listen to notification from HUD button
         NotificationCenter.default.publisher(for: .startDictationMode)
-            .sink { [weak dictationManager] _ in
+            .sink { [weak dictationManager, weak commandManager] _ in
+                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                 Task {
                     await dictationManager?.startDictation()
                 }

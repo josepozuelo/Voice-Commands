@@ -4,6 +4,7 @@ import Combine
 extension Notification.Name {
     static let startEditMode = Notification.Name("startEditMode")
     static let startDictationMode = Notification.Name("startDictationMode")
+    static let resumeContinuousMode = Notification.Name("resumeContinuousMode")
 }
 
 struct CommandHUD: View {

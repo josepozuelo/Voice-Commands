@@ -20,6 +20,8 @@ struct CommandJSON: Codable {
     let instruction: String?
     
     let phrase: String?
+    
+    let mode: String?
 }
 
 enum CommandIntent: String, Codable {
@@ -31,6 +33,7 @@ enum CommandIntent: String, Codable {
     case dictation
     case edit
     case highlight_phrase
+    case mode_switch
     case none
 }
 
@@ -112,6 +115,11 @@ extension CommandJSON {
         return phrase != nil && !phrase!.isEmpty
     }
     
+    var isValidModeSwitch: Bool {
+        guard intent == .mode_switch else { return false }
+        return mode != nil && !mode!.isEmpty && ["dictation", "edit", "command"].contains(mode!)
+    }
+    
     var isValid: Bool {
         switch intent {
         case .shortcut:
@@ -130,6 +138,8 @@ extension CommandJSON {
             return isValidEdit
         case .highlight_phrase:
             return isValidHighlightPhrase
+        case .mode_switch:
+            return isValidModeSwitch
         case .none:
             return true
         }

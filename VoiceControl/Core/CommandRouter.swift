@@ -43,6 +43,9 @@ class CommandRouter {
         case .highlight_phrase:
             try await routeHighlightPhrase(command)
             
+        case .mode_switch:
+            try await routeModeSwitch(command)
+            
         case .none:
             handleNoneIntent()
         }
@@ -319,6 +322,35 @@ class CommandRouter {
             logger.error("Failed to highlight phrase: \(error)")
             onFeedback?("Phrase not found")
             throw error
+        }
+    }
+    
+    // MARK: - Mode Switch Intent
+    
+    private func routeModeSwitch(_ command: CommandJSON) async throws {
+        guard let mode = command.mode else {
+            throw RouteError.missingParameters("Mode switch requires mode")
+        }
+        
+        logger.info("Mode switch to: \(mode)")
+        
+        switch mode {
+        case "dictation":
+            // Trigger dictation mode via notification
+            NotificationCenter.default.post(name: .startDictationMode, object: nil)
+            onFeedback?("Starting dictation mode...")
+            
+        case "edit":
+            // Trigger edit mode via notification
+            NotificationCenter.default.post(name: .startEditMode, object: nil)
+            onFeedback?("Starting edit mode...")
+            
+        case "command":
+            // Already in command mode, just provide feedback
+            onFeedback?("Already in command mode")
+            
+        default:
+            throw RouteError.unsupportedAction(mode)
         }
     }
     
