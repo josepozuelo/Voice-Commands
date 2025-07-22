@@ -98,7 +98,9 @@ class AudioEngine: NSObject, ObservableObject {
         
         do {
             try audioEngine.start()
-            isRecording = true
+            DispatchQueue.main.async {
+                self.isRecording = true
+            }
         } catch {
             print("Failed to start audio engine: \(error)")
         }
@@ -184,7 +186,9 @@ class AudioEngine: NSObject, ObservableObject {
         
         do {
             try audioEngine.start()
-            isRecording = true
+            DispatchQueue.main.async {
+                self.isRecording = true
+            }
         } catch {
             print("Failed to start audio engine: \(error)")
         }
@@ -199,7 +203,9 @@ class AudioEngine: NSObject, ObservableObject {
         audioEngine = nil
         inputNode = nil
         
-        isRecording = false
+        DispatchQueue.main.async {
+            self.isRecording = false
+        }
         
         // Send any recorded audio if not in continuous mode
         if !isContinuousMode && !audioBuffer.isEmpty {

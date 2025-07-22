@@ -70,14 +70,14 @@ struct VoiceControlApp: App {
                 Divider()
                 
                 Button("Dictation Mode") {
-                    Task {
+                    Task { @MainActor in
                         await dictationManager.startDictation()
                     }
                 }
                 .keyboardShortcut("k", modifiers: [.control])
                 
                 Button("Edit Mode") {
-                    Task {
+                    Task { @MainActor in
                         editManager.startEditing()
                     }
                 }
@@ -113,8 +113,8 @@ struct VoiceControlApp: App {
         // Setup dictation manager to listen to hotkey events
         hotkeyManager.dictationHotkeyPressed
             .sink { [weak dictationManager, weak commandManager] in
-                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
-                Task {
+                Task { @MainActor in
+                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                     await dictationManager?.startDictation()
                 }
             }
@@ -123,8 +123,8 @@ struct VoiceControlApp: App {
         // Setup dictation manager to listen to notification from HUD button
         NotificationCenter.default.publisher(for: .startDictationMode)
             .sink { [weak dictationManager, weak commandManager] _ in
-                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
-                Task {
+                Task { @MainActor in
+                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
                     await dictationManager?.startDictation()
                 }
             }
@@ -132,6 +132,7 @@ struct VoiceControlApp: App {
         
         // Setup dictation HUD visibility
         dictationManager.$showHUD
+            .receive(on: DispatchQueue.main)
             .sink { [weak dictationModeHUDController] show in
                 if show {
                     dictationModeHUDController?.showWindow(nil)
@@ -228,14 +229,14 @@ struct VoiceControlApp: App {
         
         // Check every 2 seconds for permission changes
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { timer in
-            let hasPermission = HotkeyManager.hasAccessibilityPermission()
-            
-            if hasPermission {
-                print("🎉 Accessibility permission granted! Reinitializing hotkeys...")
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                let hasPermission = HotkeyManager.hasAccessibilityPermission()
+                
+                if hasPermission {
+                    print("🎉 Accessibility permission granted! Reinitializing hotkeys...")
                     self.hotkeyManager.reinitialize()
+                    timer.invalidate()
                 }
-                timer.invalidate()
             }
         }
     }

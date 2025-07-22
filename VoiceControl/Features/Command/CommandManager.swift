@@ -151,20 +151,24 @@ class CommandManager: ObservableObject {
     func startContinuousMode() {
         guard !isListening else { return }
         
-        isContinuousMode = true
-        isListening = true
-        hudState = .continuousListening
-        recognizedText = ""
-        currentCommand = nil
-        error = nil
+        DispatchQueue.main.async {
+            self.isContinuousMode = true
+            self.isListening = true
+            self.hudState = .continuousListening
+            self.recognizedText = ""
+            self.currentCommand = nil
+            self.error = nil
+        }
         
         audioEngine.startContinuousRecording()
     }
     
     func stopContinuousMode() {
-        isContinuousMode = false
+        DispatchQueue.main.async {
+            self.isContinuousMode = false
+            self.hudState = .idle
+        }
         stopListening()
-        hudState = .idle
     }
     
     func cancelCurrentOperation() {
@@ -183,7 +187,9 @@ class CommandManager: ObservableObject {
     
     func retryLastCommand() {
         if !lastTranscription.isEmpty {
-            hudState = .processing
+            DispatchQueue.main.async {
+                self.hudState = .processing
+            }
             classifyAndExecute(lastTranscription)
         } else {
             startVoiceCommand()
@@ -200,11 +206,13 @@ class CommandManager: ObservableObject {
             resetToIdle()
         }
         
-        isListening = true
-        hudState = .listening
-        recognizedText = ""
-        currentCommand = nil
-        error = nil
+        DispatchQueue.main.async {
+            self.isListening = true
+            self.hudState = .listening
+            self.recognizedText = ""
+            self.currentCommand = nil
+            self.error = nil
+        }
         
         audioEngine.startRecording()
     }
@@ -212,14 +220,18 @@ class CommandManager: ObservableObject {
     private func stopListening() {
         guard isListening else { return }
         
-        isListening = false
+        DispatchQueue.main.async {
+            self.isListening = false
+        }
         audioEngine.stopRecording()
     }
     
     private func processAudioData(_ audioData: Data) {
         let seconds = Float(audioData.count) / (16000.0 * 4.0)
         print("🎵 COMMAND MANAGER: Received audio data: \(String(format: "%.1f", seconds))s")
-        hudState = .processing
+        DispatchQueue.main.async {
+            self.hudState = .processing
+        }
         whisperService.startTranscription(audioData: audioData)
     }
     
@@ -231,7 +243,9 @@ class CommandManager: ObservableObject {
         }
         
         // Temporarily change state to processing while keeping continuous mode active
-        hudState = .processing
+        DispatchQueue.main.async {
+            self.hudState = .processing
+        }
         whisperService.startTranscription(audioData: audioChunk)
     }
     
@@ -246,7 +260,9 @@ class CommandManager: ObservableObject {
         }
         
         // Set recognized text immediately to show in HUD
-        recognizedText = text
+        DispatchQueue.main.async {
+            self.recognizedText = text
+        }
         print("🎤 TRANSCRIPTION: Processing non-empty text: '\(text)'")
         
         // Process non-empty transcription with LLM
@@ -256,7 +272,9 @@ class CommandManager: ObservableObject {
     private func classifyAndExecute(_ text: String) {
         print("📊 STATE: classifyAndExecute called with text: '\(text)'")
         lastTranscription = text
-        hudState = .classifying
+        DispatchQueue.main.async {
+            self.hudState = .classifying
+        }
         print("📊 STATE: Changed to .classifying")
         
         Task {
@@ -307,11 +325,13 @@ class CommandManager: ObservableObject {
     
     
     private func resetToIdle() {
-        hudState = .idle
-        currentCommand = nil
-        recognizedText = ""
-        error = nil
-        isListening = false  // Important: reset listening state
+        DispatchQueue.main.async {
+            self.hudState = .idle
+            self.currentCommand = nil
+            self.recognizedText = ""
+            self.error = nil
+            self.isListening = false  // Important: reset listening state
+        }
         
         // Stop audio engine if it's still running
         if audioEngine.isRecording {
@@ -327,8 +347,10 @@ class CommandManager: ObservableObject {
         print("❌ ERROR: showError called with message: '\(message)'")
         print("❌ ERROR: Called from router feedback callback")
         let commandError = CommandError.executionFailed(message)
-        error = commandError
-        hudState = .error(commandError)
+        DispatchQueue.main.async {
+            self.error = commandError
+            self.hudState = .error(commandError)
+        }
         print("❌ ERROR: HUD state changed to .error")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -346,8 +368,10 @@ class CommandManager: ObservableObject {
     }
     
     private func handleError(_ error: Error) {
-        self.error = error
-        hudState = .error(error)
+        DispatchQueue.main.async {
+            self.error = error
+            self.hudState = .error(error)
+        }
         
         // Don't stop recording in continuous mode
         if !isContinuousMode && isListening {
@@ -577,7 +601,7 @@ class EditManager: ObservableObject {
     
     private func startRecordingTimer() {
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            DispatchQueue.main.async {
                 guard let self = self,
                       let startTime = self.recordingStartTime else { return }
                 

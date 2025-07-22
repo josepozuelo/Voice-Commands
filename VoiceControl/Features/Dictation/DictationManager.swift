@@ -262,15 +262,22 @@ struct DictationModeHUD: View {
 struct TimeElapsedView: View {
     let startTime: Date
     @State private var elapsedTime: TimeInterval = 0
+    @State private var timer: Timer?
     
     var body: some View {
         Text(formatTime(elapsedTime))
             .font(.system(size: 14, weight: .medium, design: .monospaced))
             .foregroundColor(.white.opacity(0.8))
             .onAppear {
-                Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                    elapsedTime = Date().timeIntervalSince(startTime)
+                timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+                    DispatchQueue.main.async {
+                        elapsedTime = Date().timeIntervalSince(startTime)
+                    }
                 }
+            }
+            .onDisappear {
+                timer?.invalidate()
+                timer = nil
             }
     }
     

@@ -365,14 +365,15 @@ class AccessibilityBridge {
     }
     
     private func simulateKeyCommand(key: CGKeyCode, modifiers: CGEventFlags) {
-        let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
+        let eventSource = CGEventSource(stateID: .hidSystemState)
+        let keyDown = CGEvent(keyboardEventSource: eventSource, virtualKey: key, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: eventSource, virtualKey: key, keyDown: false)
         
         keyDown?.flags = modifiers
         keyUp?.flags = modifiers
         
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        keyDown?.post(tap: .cgAnnotatedSessionEventTap)
+        keyUp?.post(tap: .cgAnnotatedSessionEventTap)
         
         usleep(10000)
     }
