@@ -2,6 +2,10 @@
 
 A macOS app for hands-free text manipulation through voice commands and dictation.
 
+## Quick Start
+
+⚠️ **Important**: Always open `VoiceControl.xcworkspace` in Xcode, NOT the `.xcodeproj` file. The workspace includes necessary dependencies.
+
 ## Features
 
 - **Voice Commands**: Control text selection, navigation, and system functions
@@ -34,8 +38,10 @@ A macOS app for hands-free text manipulation through voice commands and dictatio
 
 3. **Open in Xcode**:
    ```bash
-   open VoiceControl.xcodeproj
+   open VoiceControl.xcworkspace
    ```
+   
+   ⚠️ **Must use the `.xcworkspace` file, not `.xcodeproj`**
 
 4. **Build and Run**:
    - Select your development team in signing settings
