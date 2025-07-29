@@ -1,0 +1,21 @@
+PODS:
+  - RealTimeCutVADLibrary (1.0.13)
+
+DEPENDENCIES:
+  - RealTimeCutVADLibrary (from `https://github.com/helloooideeeeea/RealTimeCutVADLibrary.git`)
+
+EXTERNAL SOURCES:
+  RealTimeCutVADLibrary:
+    :git: https://github.com/helloooideeeeea/RealTimeCutVADLibrary.git
+
+CHECKOUT OPTIONS:
+  RealTimeCutVADLibrary:
+    :commit: 3ee973def486fe1397d1c2ec6ee9be13c3e7fa8c
+    :git: https://github.com/helloooideeeeea/RealTimeCutVADLibrary.git
+
+SPEC CHECKSUMS:
+  RealTimeCutVADLibrary: af06522b826e735fac1d9076cd3cf972e79eefd5
+
+PODFILE CHECKSUM: 9ce9d96e4f0b5eb4b621aa8d7387597d0801fd77
+
+COCOAPODS: 1.16.2

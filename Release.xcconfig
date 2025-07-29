@@ -1,0 +1,3 @@
+// Release configuration
+#include "VoiceControl/Config/Base.xcconfig"
+#include "Pods/Target Support Files/Pods-VoiceControl/Pods-VoiceControl.release.xcconfig"

@@ -6,19 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 VoiceControl is a macOS voice command app built with SwiftUI that enables hands-free text manipulation. It uses OpenAI's Whisper API for speech recognition and macOS Accessibility APIs for text control. Features continuous voice command mode with automatic silence detection and voice-based disambiguation.
 
-## Workflow
-- First think through the problem, read the codebase for relevant files and ask any questions or do any research you might need.
-- You will then plan out the feature or task at hand, if the feature needs some high-level definition and design, you can create a spec in the spec folder, so that I can review and work through it with you. If the feature is well defined or straightforward you can skip to the next step.
-- You will use the todo.md file in the tasks folder to have an implementation plan with the specific todos you need to execute on. I will be able to collaborate with you in that file. 
-- Once I give you the greenlight you can start implementing and start checking off the todo items as you go. 
-- Commit your work when you think it's a good checkpoint. 
+**Bundle Identifier**: com.yourteam.VoiceControl  
+**Minimum Requirements**: macOS 13.0+, Xcode 15.0+, Swift 5.0
+
+## Development Workflow
+
+1. **Analyze**: Read relevant code, understand the problem
+2. **Design** (if needed): Create spec in `specs/` folder for complex features
+3. **Plan**: Use `tasks/todo.md` to list implementation steps
+4. **Implement**: Execute tasks after approval, check off items as completed
+5. **Commit**: Create commits at logical checkpoints 
 
 ## Development Commands
 
-### Build and Run
-- Open project: `open VoiceControl.xcodeproj`
-- Build in Xcode: ⌘B or Product → Build
-- Run in Xcode: ⌘R or Product → Run
+### Building the Project
+- **IMPORTANT**: Always build from the workspace, not the project file
+- Build command: `xcodebuild -workspace VoiceControl.xcworkspace -scheme VoiceControl -configuration Debug build`
+- The workspace includes necessary dependencies like RealTimeCutVADLibrary
+
 
 ### Environment Setup
 - Required environment variable: `OPENAI_API_KEY`
@@ -29,15 +34,7 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 ### Release Build and Installation
 Every time you build a new release for testing, follow these steps:
 
-1. Kill any running instances: `pkill -f VoiceControl`
-2. Build release: `xcodebuild -project VoiceControl.xcodeproj -scheme VoiceControl -configuration Release -derivedDataPath build clean build`
-3. Install to Applications: `cp -R "build/Build/Products/Release/VoiceControl.app" /Applications/`
-4. Reset all permissions:
-   - `tccutil reset Accessibility com.yourteam.VoiceControl`
-   - `tccutil reset ListenEvent com.yourteam.VoiceControl`
-   - `tccutil reset PostEvent com.yourteam.VoiceControl`
-5. Sign the app: `codesign --force --deep --sign - /Applications/VoiceControl.app`
-6. Launch `/Applications/VoiceControl.app` and grant all permissions when prompted
+- Use a add_files_simple.py to make sure your xcode configuration is up to date
 
 **Note**: The permission reset is necessary because macOS tracks permissions by app signature, which changes with each build.
 
@@ -72,35 +69,4 @@ The app requires these macOS permissions:
 - **Resources/commands.json**: Command definitions with phrases and actions
 - **Utils/HotkeyManager.swift**: Global hotkey registration and detection
 - **Utils/TextSelection.swift**: Text selection utilities and boundary detection
-
-### Command System
-
-Commands are defined in `Resources/commands.json` with:
-- **phrases**: Array of voice trigger phrases
-- **action**: Action type and parameters (selectText, systemAction, moveCursor)
-- **category**: Grouping (textSelection, system, navigation, editing)
-
-The fuzzy matching system uses confidence scoring (threshold: 0.85) to decide between:
-- Auto-execution for high-confidence matches
-- Disambiguation HUD for multiple possible matches (voice-enabled: say "one", "two", or "three")
-
-### Operating Modes
-- **Single Command Mode**: Press hotkey, speak command, auto-stops after execution
-- **Continuous Mode** (default): Press hotkey once, speak multiple commands, auto-detects silence between commands, press hotkey again to stop
-
-### Global Hotkeys
-- **⌃⇧V**: Voice Commands (implemented)
-- **⌥⌘D**: Dictation Mode (future feature)
-- **⌥⌘E**: Edit Mode (future feature)
-
-## Adding New Commands
-
-1. Edit `VoiceControl/Resources/commands.json`
-2. Add new command object with required fields: id, phrases, action, category
-3. Rebuild project to include changes
-4. Test with target applications (TextEdit, Safari, VS Code, etc.)
-
-Action types:
-- `selectText`: Text selection with selectionType (word, sentence, paragraph, etc.)
-- `systemAction`: Keyboard shortcuts with key combinations
-- `moveCursor`: Cursor movement with direction and unit parameters
+- **Utils/CircularBuffer.swift**: Audio buffer implementation for continuous capture

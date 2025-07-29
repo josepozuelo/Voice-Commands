@@ -5,10 +5,36 @@ import Combine
 struct VoiceControlApp: App {
     @StateObject private var commandManager = CommandManager()
     @StateObject private var hotkeyManager = HotkeyManager()
+    @StateObject private var editManager: EditManager
+    @StateObject private var dictationManager: DictationManager
     @State private var hudWindowController: CommandHUDWindowController?
+    @State private var editModeHUDController: EditModeHUDWindowController?
+    @State private var dictationModeHUDController: DictationModeHUDWindowController?
     @State private var hasSetupApp = false
     @State private var hasShownPermissionDialog = false
     @State private var isCheckingPermissions = false
+    
+    init() {
+        let audioEngine = AudioEngine()
+        let openAIService = OpenAIService()
+        let whisperService = WhisperService(openAIService: openAIService)
+        let accessibilityBridge = AccessibilityBridge()
+        let gptService = GPTService(openAIService: openAIService)
+        
+        _editManager = StateObject(wrappedValue: EditManager(
+            audioEngine: audioEngine,
+            whisperService: whisperService,
+            accessibilityBridge: accessibilityBridge,
+            gptService: gptService
+        ))
+        
+        _dictationManager = StateObject(wrappedValue: DictationManager(
+            audioEngine: audioEngine,
+            whisperService: whisperService,
+            accessibilityBridge: accessibilityBridge,
+            gptService: gptService
+        ))
+    }
     
     var body: some Scene {
         WindowGroup(content: {
@@ -40,6 +66,22 @@ struct VoiceControlApp: App {
                     testHotkeysManually()
                 }
                 .keyboardShortcut("t", modifiers: [.command])
+                
+                Divider()
+                
+                Button("Dictation Mode") {
+                    Task { @MainActor in
+                        await dictationManager.startDictation()
+                    }
+                }
+                .keyboardShortcut("k", modifiers: [.control])
+                
+                Button("Edit Mode") {
+                    Task { @MainActor in
+                        editManager.startEditing()
+                    }
+                }
+                .keyboardShortcut("l", modifiers: [.control])
             }
         }
     }
@@ -58,10 +100,47 @@ struct VoiceControlApp: App {
     
     private func setupHUD() {
         hudWindowController = CommandHUDWindowController(commandManager: commandManager)
+        editModeHUDController = EditModeHUDWindowController(editManager: editManager)
+        dictationModeHUDController = DictationModeHUDWindowController(manager: dictationManager)
     }
     
     private func connectComponents() {
         commandManager.setHotkeyManager(hotkeyManager)
+        
+        // Setup edit manager to listen to hotkey events
+        editManager.setupHotkeyListener(hotkeyManager: hotkeyManager, commandManager: commandManager)
+        
+        // Setup dictation manager to listen to hotkey events
+        hotkeyManager.dictationHotkeyPressed
+            .sink { [weak dictationManager, weak commandManager] in
+                Task { @MainActor in
+                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
+                    await dictationManager?.startDictation()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
+        
+        // Setup dictation manager to listen to notification from HUD button
+        NotificationCenter.default.publisher(for: .startDictationMode)
+            .sink { [weak dictationManager, weak commandManager] _ in
+                Task { @MainActor in
+                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
+                    await dictationManager?.startDictation()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
+        
+        // Setup dictation HUD visibility
+        dictationManager.$showHUD
+            .receive(on: DispatchQueue.main)
+            .sink { [weak dictationModeHUDController] show in
+                if show {
+                    dictationModeHUDController?.showWindow(nil)
+                } else {
+                    dictationModeHUDController?.close()
+                }
+            }
+            .store(in: &dictationManager.cancellables)
     }
     
     private func checkAccessibilityPermission() {
@@ -150,14 +229,14 @@ struct VoiceControlApp: App {
         
         // Check every 2 seconds for permission changes
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { timer in
-            let hasPermission = HotkeyManager.hasAccessibilityPermission()
-            
-            if hasPermission {
-                print("🎉 Accessibility permission granted! Reinitializing hotkeys...")
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                let hasPermission = HotkeyManager.hasAccessibilityPermission()
+                
+                if hasPermission {
+                    print("🎉 Accessibility permission granted! Reinitializing hotkeys...")
                     self.hotkeyManager.reinitialize()
+                    timer.invalidate()
                 }
-                timer.invalidate()
             }
         }
     }
@@ -178,7 +257,10 @@ struct VoiceControlApp: App {
         alert.informativeText = """
         Testing hotkeys now...
         
-        Please try pressing Control+Shift+V.
+        Available hotkeys:
+        • Control+J - Voice Commands
+        • Control+K - Dictation Mode
+        • Control+L - Edit Mode
         
         Watch the console for debug messages to see if hotkeys are working.
         If you see key events logged, the hotkeys are functioning correctly!

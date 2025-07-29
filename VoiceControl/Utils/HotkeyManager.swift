@@ -71,16 +71,14 @@ class HotkeyManager: ObservableObject {
         
         // Use the modern, recommended NSEvent API for global monitoring
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            print("🔑 Global monitor received key event!")
-            self?.logToFile("🔑 Global monitor received key event! KeyCode: \(event.keyCode)")
             self?.handleKeyEvent(event)
         }
         
         if globalMonitor != nil {
             print("✅ Global key monitor installed successfully")
             logToFile("✅ Global key monitor installed successfully")
-            print("🎯 Listening for Control+Shift+V...")
-            logToFile("🎯 Listening for Control+Shift+V (keyCode 9)...")
+            print("🎯 Listening for Control+J, Control+K, Control+L...")
+            logToFile("🎯 Listening for Control+J (keyCode 38), Control+K (keyCode 40), Control+L (keyCode 37)...")
             print("   Monitor object: \(String(describing: globalMonitor))")
         } else {
             print("❌ Failed to install global key monitor")
@@ -99,28 +97,30 @@ class HotkeyManager: ObservableObject {
         let hasOption = modifiers.contains(.option)
         
         // Debug logging for our target keys
-        if (hasControl && hasShift) || (hasCommand && hasOption) {
+        if hasControl {
             print("⌨️  Key Event - Code: \(keyCode), Modifiers: [Control:\(hasControl) Shift:\(hasShift) Cmd:\(hasCommand) Opt:\(hasOption)]")
         }
         
-        // Check for Control+Shift+V (keyCode 9 is V)
-        if keyCode == 9 && hasControl && hasShift {
-            print("🚀 Control+Shift+V detected! Triggering voice command...")
-            logToFile("🚀 Control+Shift+V detected! Triggering voice command...")
+        // Check for Control+J (keyCode 38 is J)
+        if keyCode == 38 && hasControl && !hasShift && !hasCommand && !hasOption {
+            print("🚀 Control+J detected! Triggering voice command...")
+            logToFile("🚀 Control+J detected! Triggering voice command...")
             DispatchQueue.main.async {
                 self.commandHotkeyPressed.send()
             }
         }
-        // Check for Option+Command+D (keyCode 2 is D)
-        else if keyCode == 2 && hasCommand && hasOption {
-            print("🎤 Option+Command+D detected! Triggering dictation...")
+        // Check for Control+K (keyCode 40 is K)
+        else if keyCode == 40 && hasControl && !hasShift && !hasCommand && !hasOption {
+            print("🎤 Control+K detected! Triggering dictation...")
+            logToFile("🎤 Control+K detected! Triggering dictation...")
             DispatchQueue.main.async {
                 self.dictationHotkeyPressed.send()
             }
         }
-        // Check for Option+Command+E (keyCode 14 is E)
-        else if keyCode == 14 && hasCommand && hasOption {
-            print("✏️  Option+Command+E detected! Triggering edit mode...")
+        // Check for Control+L (keyCode 37 is L)
+        else if keyCode == 37 && hasControl && !hasShift && !hasCommand && !hasOption {
+            print("✏️  Control+L detected! Triggering edit mode...")
+            logToFile("✏️  Control+L detected! Triggering edit mode...")
             DispatchQueue.main.async {
                 self.editHotkeyPressed.send()
             }

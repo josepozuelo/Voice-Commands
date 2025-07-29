@@ -12,7 +12,15 @@
       "Bash(pkill:*)",
       "Bash(cp:*)",
       "Bash(tccutil reset:*)",
-      "Bash(codesign:*)"
+      "Bash(codesign:*)",
+      "Bash(find:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(sed:*)",
+      "Bash(pod:*)",
+      "Bash(sudo gem install:*)"
     ],
     "deny": []
   }

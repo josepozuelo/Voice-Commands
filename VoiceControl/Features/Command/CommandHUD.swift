@@ -1,6 +1,12 @@
 import SwiftUI
 import Combine
 
+extension Notification.Name {
+    static let startEditMode = Notification.Name("startEditMode")
+    static let startDictationMode = Notification.Name("startDictationMode")
+    static let resumeContinuousMode = Notification.Name("resumeContinuousMode")
+}
+
 struct CommandHUD: View {
     @ObservedObject var commandManager: CommandManager
     @State private var selectedIndex = 0
@@ -17,8 +23,8 @@ struct CommandHUD: View {
                 continuousListeningView
             case .processing:
                 processingView
-            case .disambiguating:
-                disambiguationView
+            case .classifying:
+                classifyingView
             case .error(let error):
                 errorView(error)
             }
@@ -46,6 +52,40 @@ struct CommandHUD: View {
             
             Spacer()
             
+            // Dictation Mode button
+            Button(action: {
+                NotificationCenter.default.post(name: .startDictationMode, object: nil)
+            }) {
+                Label("Dictation", systemImage: "text.append")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.2))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Dictation Mode (⌃K)")
+            
+            // Edit Mode button
+            Button(action: {
+                NotificationCenter.default.post(name: .startEditMode, object: nil)
+            }) {
+                Label("Edit", systemImage: "pencil")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.2))
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Edit Mode (⌃L)")
+            
             // Manual trigger button
             Button(action: {
                 commandManager.startVoiceCommand()
@@ -63,7 +103,7 @@ struct CommandHUD: View {
                     isHovering = hovering
                 }
             }
-            .help("Start Voice Command (⌃⇧V)")
+            .help("Start Voice Command (⌃J)")
         }
     }
     
@@ -110,9 +150,16 @@ struct CommandHUD: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text("Listening for commands...")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                if !commandManager.recognizedText.isEmpty {
+                    Text("\"\(commandManager.recognizedText)\"")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text("Listening for commands...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
@@ -153,27 +200,18 @@ struct CommandHUD: View {
         }
     }
     
-    private var disambiguationView: some View {
+    private var classifyingView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Did you mean:")
+                Text("Classifying command...")
                     .font(.headline)
                     .foregroundColor(.primary)
                 
                 Spacer()
                 
-                HStack(spacing: 8) {
-                    // Listening indicator
-                    Image(systemName: "mic.fill")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                        .scaleEffect(1.2)
-                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: true)
-                    
-                    Text("Say a number")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(0.8)
                 
                 Button(action: {
                     commandManager.stopVoiceCommand()
@@ -193,55 +231,20 @@ struct CommandHUD: View {
                     .padding(.bottom, 4)
             }
             
-            ForEach(Array(commandManager.currentMatches.enumerated()), id: \.offset) { index, match in
-                matchRow(match: match, index: index, isSelected: index == selectedIndex)
+            if let command = commandManager.currentCommand {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                    
+                    Text("Intent: \(command.intent.rawValue.capitalized)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            
-            Text("Say a number or click to select • Press Enter for option 1")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .padding(.top, 4)
         }
     }
     
-    private func matchRow(match: CommandMatch, index: Int, isSelected: Bool) -> some View {
-        HStack {
-            Text("\(index + 1)")
-                .font(.caption)
-                .foregroundColor(.white)
-                .frame(width: 20, height: 20)
-                .background(
-                    Circle()
-                        .fill(isSelected ? Color.accentColor : Color.gray.opacity(0.6))
-                )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(match.matchedPhrase)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                
-                Text(match.command.category.rawValue.capitalized)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Text("\(Int(match.confidence * 100))%")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            commandManager.selectMatch(at: index)
-        }
-    }
     
     private func errorView(_ error: Error) -> some View {
         HStack(spacing: 12) {
@@ -253,6 +256,13 @@ struct CommandHUD: View {
                 Text("Error")
                     .font(.headline)
                     .foregroundColor(.primary)
+                
+                if !commandManager.recognizedText.isEmpty {
+                    Text("Heard: \"\(commandManager.recognizedText)\"")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
                 
                 Text(error.localizedDescription)
                     .font(.subheadline)
@@ -327,7 +337,7 @@ struct CommandHUD: View {
     private var minWidth: CGFloat {
         switch commandManager.hudState {
         case .idle:
-            return 250
+            return 350
         default:
             return 350
         }
@@ -336,7 +346,7 @@ struct CommandHUD: View {
     private var maxWidth: CGFloat {
         switch commandManager.hudState {
         case .idle:
-            return 300
+            return 400
         default:
             return Config.hudMaxWidth
         }
@@ -442,13 +452,13 @@ class CommandHUDWindowController: NSWindowController {
         let targetSize: NSSize
         switch commandManager.hudState {
         case .idle:
-            targetSize = NSSize(width: 300, height: 60)
+            targetSize = NSSize(width: 400, height: 60)
         case .listening, .processing:
             targetSize = NSSize(width: 400, height: 80)
         case .continuousListening:
             targetSize = NSSize(width: 400, height: 80)
-        case .disambiguating:
-            targetSize = NSSize(width: 500, height: 220)
+        case .classifying:
+            targetSize = NSSize(width: 500, height: 140)
         case .error:
             targetSize = NSSize(width: 500, height: 100)
         }
