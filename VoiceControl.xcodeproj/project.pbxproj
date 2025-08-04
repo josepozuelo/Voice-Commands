@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		829E5290B9C84AED8D96E095 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23F5673E56E437DA4FF79C0 /* Logger.swift */; };
+		0D891C68F422411B9A360438 /* DictationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5086141F4745FD9F5D981B /* DictationManager.swift */; };
+		829E5290B9C84AED8D96E095 /* VoiceControl/Utils/Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23F5673E56E437DA4FF79C0 /* VoiceControl/Utils/Logger.swift */; };
 		A1000001000000000000001 /* VoiceControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001000000000000001 /* VoiceControlApp.swift */; };
 		A1000002000000000000002 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002000000000000002 /* Config.swift */; };
 		A1000003000000000000003 /* AccessibilityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003000000000000003 /* AccessibilityBridge.swift */; };
@@ -26,9 +27,13 @@
 		A1000016000000000000016 /* CommandIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019000000000000019 /* CommandIntent.swift */; };
 		A1000017000000000000017 /* CommandClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020000000000000020 /* CommandClassifier.swift */; };
 		A1000018000000000000018 /* CommandRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021000000000000021 /* CommandRouter.swift */; };
+		D5A6580D2E400970009989D2 /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A6580B2E400970009989D2 /* OverlayWindowController.swift */; };
+		D5A6580E2E400970009989D2 /* OverlayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658082E400970009989D2 /* OverlayState.swift */; };
+		D5A6580F2E400970009989D2 /* ModeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658072E400970009989D2 /* ModeButton.swift */; };
+		D5A658102E400970009989D2 /* OverlayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A6580A2E400970009989D2 /* OverlayViewModel.swift */; };
+		D5A658112E400970009989D2 /* OverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658092E400970009989D2 /* OverlayView.swift */; };
 		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
 		ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */; };
-		0D891C68F422411B9A360438 /* DictationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5086141F4745FD9F5D981B /* DictationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,12 +62,17 @@
 		A2000021000000000000021 /* CommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRouter.swift; sourceTree = "<group>"; };
 		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_VoiceControl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		D23F5673E56E437DA4FF79C0 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControl/Utils/Logger.swift; sourceTree = "<group>"; };
+		D23F5673E56E437DA4FF79C0 /* VoiceControl/Utils/Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControl/Utils/Logger.swift; sourceTree = "<group>"; };
 		D517DB382E0A4DF80096ACC5 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D517DB392E0A4E070096ACC5 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		D526D4BF2E0A04A00084C5EA /* VoiceControlRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VoiceControlRelease.entitlements; sourceTree = "<group>"; };
-		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
+		D5A658072E400970009989D2 /* ModeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeButton.swift; sourceTree = "<group>"; };
+		D5A658082E400970009989D2 /* OverlayState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayState.swift; sourceTree = "<group>"; };
+		D5A658092E400970009989D2 /* OverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayView.swift; sourceTree = "<group>"; };
+		D5A6580A2E400970009989D2 /* OverlayViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayViewModel.swift; sourceTree = "<group>"; };
+		D5A6580B2E400970009989D2 /* OverlayWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayWindowController.swift; sourceTree = "<group>"; };
 		DD5086141F4745FD9F5D981B /* DictationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationManager.swift; sourceTree = "<group>"; };
+		F390453067AD43618C6AE6E2 /* CircularBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularBuffer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +161,7 @@
 		A5000006000000000000006 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				D5A6580C2E400970009989D2 /* Overlay */,
 				A5000010000000000000010 /* Command */,
 				A5000011000000000000011 /* Dictation */,
 			);
@@ -213,9 +224,21 @@
 		D526D4BE2E0A01640084C5EA /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
-				D23F5673E56E437DA4FF79C0 /* Logger.swift */,
+				D23F5673E56E437DA4FF79C0 /* VoiceControl/Utils/Logger.swift */,
 			);
 			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		D5A6580C2E400970009989D2 /* Overlay */ = {
+			isa = PBXGroup;
+			children = (
+				D5A658072E400970009989D2 /* ModeButton.swift */,
+				D5A658082E400970009989D2 /* OverlayState.swift */,
+				D5A658092E400970009989D2 /* OverlayView.swift */,
+				D5A6580A2E400970009989D2 /* OverlayViewModel.swift */,
+				D5A6580B2E400970009989D2 /* OverlayWindowController.swift */,
+			);
+			path = Overlay;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -293,9 +316,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -343,15 +370,20 @@
 				A1000010000000000000010 /* HotkeyManager.swift in Sources */,
 				A1000011000000000000011 /* TextSelection.swift in Sources */,
 				DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */,
+				D5A6580D2E400970009989D2 /* OverlayWindowController.swift in Sources */,
+				D5A6580E2E400970009989D2 /* OverlayState.swift in Sources */,
+				D5A6580F2E400970009989D2 /* ModeButton.swift in Sources */,
+				D5A658102E400970009989D2 /* OverlayViewModel.swift in Sources */,
+				D5A658112E400970009989D2 /* OverlayView.swift in Sources */,
 				A1000013000000000000013 /* AudioPreprocessor.swift in Sources */,
 				A1000014000000000000014 /* VADSilenceDetector.swift in Sources */,
 				A1000015000000000000015 /* VADChunker.swift in Sources */,
 				A1000016000000000000016 /* CommandIntent.swift in Sources */,
 				A1000017000000000000017 /* CommandClassifier.swift in Sources */,
 				A1000018000000000000018 /* CommandRouter.swift in Sources */,
-				829E5290B9C84AED8D96E095 /* Logger.swift in Sources */,
-			
-				0D891C68F422411B9A360438 /* DictationManager.swift in Sources */,);
+				829E5290B9C84AED8D96E095 /* VoiceControl/Utils/Logger.swift in Sources */,
+				0D891C68F422411B9A360438 /* DictationManager.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

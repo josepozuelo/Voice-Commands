@@ -7,9 +7,8 @@ struct VoiceControlApp: App {
     @StateObject private var hotkeyManager = HotkeyManager()
     @StateObject private var editManager: EditManager
     @StateObject private var dictationManager: DictationManager
-    @State private var hudWindowController: CommandHUDWindowController?
-    @State private var editModeHUDController: EditModeHUDWindowController?
-    @State private var dictationModeHUDController: DictationModeHUDWindowController?
+    @StateObject private var overlayViewModel: OverlayViewModel
+    @State private var overlayWindowController: OverlayWindowController?
     @State private var hasSetupApp = false
     @State private var hasShownPermissionDialog = false
     @State private var isCheckingPermissions = false
@@ -21,18 +20,32 @@ struct VoiceControlApp: App {
         let accessibilityBridge = AccessibilityBridge()
         let gptService = GPTService(openAIService: openAIService)
         
-        _editManager = StateObject(wrappedValue: EditManager(
-            audioEngine: audioEngine,
-            whisperService: whisperService,
-            accessibilityBridge: accessibilityBridge,
-            gptService: gptService
-        ))
+        let commandManager = CommandManager()
         
-        _dictationManager = StateObject(wrappedValue: DictationManager(
+        let editManager = EditManager(
             audioEngine: audioEngine,
             whisperService: whisperService,
             accessibilityBridge: accessibilityBridge,
             gptService: gptService
+        )
+        
+        let dictationManager = DictationManager(
+            audioEngine: audioEngine,
+            whisperService: whisperService,
+            accessibilityBridge: accessibilityBridge,
+            gptService: gptService
+        )
+        dictationManager.commandManager = commandManager
+        editManager.commandManager = commandManager
+        
+        _commandManager = StateObject(wrappedValue: commandManager)
+        _editManager = StateObject(wrappedValue: editManager)
+        _dictationManager = StateObject(wrappedValue: dictationManager)
+        
+        _overlayViewModel = StateObject(wrappedValue: OverlayViewModel(
+            commandManager: commandManager,
+            editManager: editManager,
+            dictationManager: dictationManager
         ))
     }
     
@@ -71,7 +84,7 @@ struct VoiceControlApp: App {
                 
                 Button("Dictation Mode") {
                     Task { @MainActor in
-                        await dictationManager.startDictation()
+                        await dictationManager.toggleDictation()
                     }
                 }
                 .keyboardShortcut("k", modifiers: [.control])
@@ -99,9 +112,7 @@ struct VoiceControlApp: App {
     }
     
     private func setupHUD() {
-        hudWindowController = CommandHUDWindowController(commandManager: commandManager)
-        editModeHUDController = EditModeHUDWindowController(editManager: editManager)
-        dictationModeHUDController = DictationModeHUDWindowController(manager: dictationManager)
+        overlayWindowController = OverlayWindowController(viewModel: overlayViewModel)
     }
     
     private func connectComponents() {
@@ -112,35 +123,23 @@ struct VoiceControlApp: App {
         
         // Setup dictation manager to listen to hotkey events
         hotkeyManager.dictationHotkeyPressed
-            .sink { [weak dictationManager, weak commandManager] in
+            .sink { [weak dictationManager] in
                 Task { @MainActor in
-                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
-                    await dictationManager?.startDictation()
+                    await dictationManager?.toggleDictation()
                 }
             }
             .store(in: &dictationManager.cancellables)
         
         // Setup dictation manager to listen to notification from HUD button
         NotificationCenter.default.publisher(for: .startDictationMode)
-            .sink { [weak dictationManager, weak commandManager] _ in
+            .sink { [weak dictationManager] _ in
                 Task { @MainActor in
-                    commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
-                    await dictationManager?.startDictation()
+                    await dictationManager?.toggleDictation()
                 }
             }
             .store(in: &dictationManager.cancellables)
         
-        // Setup dictation HUD visibility
-        dictationManager.$showHUD
-            .receive(on: DispatchQueue.main)
-            .sink { [weak dictationModeHUDController] show in
-                if show {
-                    dictationModeHUDController?.showWindow(nil)
-                } else {
-                    dictationModeHUDController?.close()
-                }
-            }
-            .store(in: &dictationManager.cancellables)
+        // HUD visibility is now handled by OverlayViewModel
     }
     
     private func checkAccessibilityPermission() {

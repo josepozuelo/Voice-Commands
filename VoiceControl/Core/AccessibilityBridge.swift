@@ -139,18 +139,36 @@ class AccessibilityBridge {
     }
     
     func replaceSelection(with text: String) throws {
-        guard HotkeyManager.hasAccessibilityPermission() else {
-            throw AccessibilityError.noAccessibilityPermission
-        }
-        
-        simulateKeyboardInput(text)
+        try insertTextAtCursor(text)
     }
     
+    /// Tries ① direct AX write, ② clipboard paste, ③ synthetic keystrokes.
+    /// Clipboard is restored automatically.
+    /// Throws if **all** tiers fail.
     func insertTextAtCursor(_ text: String) throws {
         guard HotkeyManager.hasAccessibilityPermission() else {
             throw AccessibilityError.noAccessibilityPermission
         }
         
+        let element = try focusedElement()
+        
+        // Tier 1: Direct AX API
+        if try replaceSelectionViaAX(in: element, with: text) {
+            return
+        }
+        
+        // Tier 2: Clipboard paste (skip for secure fields)
+        if !isSecureField(element), pasteViaClipboard(text) {
+            return
+        }
+        
+        // Tier 3: Synthetic keystrokes
+        simulateKeyboardInput(text)
+    }
+    
+    // MARK: - Insert-text helpers
+    
+    private func focusedElement() throws -> AXUIElement {
         let systemWideElement = AXUIElementCreateSystemWide()
         var focusedElement: CFTypeRef?
         
@@ -165,22 +183,176 @@ class AccessibilityBridge {
             throw AccessibilityError.failedToGetFocusedElement
         }
         
-        // Try to use the native accessibility method for inserting text at cursor
-        let insertResult = AXUIElementPerformAction(
-            element as! AXUIElement,
-            "AXInsertTextAtCursor" as CFString
+        return element as! AXUIElement
+    }
+    
+    private func canSet(_ attr: CFString, on element: AXUIElement) -> Bool {
+        var settable: DarwinBoolean = false
+        let result = AXUIElementIsAttributeSettable(element, attr, &settable)
+        return result == .success && settable.boolValue
+    }
+    
+    private func isSecureField(_ element: AXUIElement) -> Bool {
+        var roleValue: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(
+            element,
+            kAXRoleAttribute as CFString,
+            &roleValue
         )
         
-        if insertResult == .success {
-            // If the action is supported, set the text to insert
+        if result == .success,
+           let role = roleValue as? String {
+            return role == "AXSecureTextField"
+        }
+        
+        return false
+    }
+    
+    /// Tier-1
+    private func replaceSelectionViaAX(in element: AXUIElement, with text: String) throws -> Bool {
+        // Check if we can set both value and selected text range
+        guard canSet(kAXValueAttribute as CFString, on: element),
+              canSet(kAXSelectedTextRangeAttribute as CFString, on: element) else {
+            return false
+        }
+        
+        // Get current selection range
+        var rangeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXSelectedTextRangeAttribute as CFString,
+            &rangeValue
+        ) == .success,
+              let axVal = rangeValue else {
+            return false
+        }
+        
+        let axValue = axVal as! AXValue
+        var cfRange = CFRange()
+        guard AXValueGetValue(axValue, .cfRange, &cfRange) else {
+            return false
+        }
+        
+        // Get current full text
+        var fullValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXValueAttribute as CFString,
+            &fullValue
+        ) == .success,
+              let fullText = fullValue as? String else {
+            return false
+        }
+        
+        // Splice the new text into the full text
+        let nsFullText = fullText as NSString
+        let newFullText = nsFullText.replacingCharacters(
+            in: NSRange(location: cfRange.location, length: cfRange.length),
+            with: text
+        )
+        
+        // Write back the new full text
+        guard AXUIElementSetAttributeValue(
+            element,
+            kAXValueAttribute as CFString,
+            newFullText as CFTypeRef
+        ) == .success else {
+            return false
+        }
+        
+        // Move caret to end of inserted text
+        let newCursorPosition = cfRange.location + text.count
+        var newRange = CFRange(location: newCursorPosition, length: 0)
+        if let newAXRange = AXValueCreate(.cfRange, &newRange) {
             AXUIElementSetAttributeValue(
-                element as! AXUIElement,
-                "AXInsertionText" as CFString,
-                text as CFTypeRef
+                element,
+                kAXSelectedTextRangeAttribute as CFString,
+                newAXRange
             )
-        } else {
-            // Fallback to keyboard simulation if the action is not supported
-            simulateKeyboardInput(text)
+        }
+        
+        return true
+    }
+    
+    /// Tier-2
+    private func pasteViaClipboard(_ text: String) -> Bool {
+        let pasteboard = NSPasteboard.general
+        let savedContents = pasteboard.string(forType: .string)
+        
+        // Clear and set new text
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        
+        // Send ⌘V
+        if let src = CGEventSource(stateID: .hidSystemState) {
+            let keyDown = CGEvent(keyboardEventSource: src,
+                                  virtualKey: CGKeyCode(kVK_ANSI_V),
+                                  keyDown: true)!
+            keyDown.flags = .maskCommand
+            let keyUp = CGEvent(keyboardEventSource: src,
+                                virtualKey: CGKeyCode(kVK_ANSI_V),
+                                keyDown: false)!
+            keyUp.flags = .maskCommand
+            
+            keyDown.post(tap: .cgAnnotatedSessionEventTap)
+            keyUp.post(tap: .cgAnnotatedSessionEventTap)
+            
+            // Restore clipboard asynchronously
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let saved = savedContents {
+                    pasteboard.clearContents()
+                    pasteboard.setString(saved, forType: .string)
+                }
+            }
+            
+            return true
+        }
+        
+        return false
+    }
+    
+    /// Tier-3
+    private func simulateKeyboardInput(_ text: String) {
+        guard let eventSource = CGEventSource(stateID: .hidSystemState) else {
+            return
+        }
+        
+        // Chunk text into 4096-byte slices
+        let maxChunkSize = 4096
+        var currentChunk = ""
+        var currentByteCount = 0
+        
+        for char in text {
+            let charByteCount = char.utf8.count
+            
+            if currentByteCount + charByteCount > maxChunkSize {
+                // Send current chunk
+                sendTextChunk(currentChunk, eventSource: eventSource)
+                currentChunk = String(char)
+                currentByteCount = charByteCount
+            } else {
+                currentChunk.append(char)
+                currentByteCount += charByteCount
+            }
+        }
+        
+        // Send remaining chunk
+        if !currentChunk.isEmpty {
+            sendTextChunk(currentChunk, eventSource: eventSource)
+        }
+    }
+    
+    private func sendTextChunk(_ chunk: String, eventSource: CGEventSource) {
+        for char in chunk {
+            if let keyDown = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: true),
+               let keyUp = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: false) {
+                let utf16Chars = Array(char.utf16)
+                keyDown.keyboardSetUnicodeString(stringLength: utf16Chars.count, unicodeString: utf16Chars)
+                keyUp.keyboardSetUnicodeString(stringLength: utf16Chars.count, unicodeString: utf16Chars)
+                
+                keyDown.post(tap: .cghidEventTap)
+                keyUp.post(tap: .cghidEventTap)
+            }
         }
     }
     
@@ -378,21 +550,6 @@ class AccessibilityBridge {
         usleep(10000)
     }
     
-    private func simulateKeyboardInput(_ text: String) {
-        let eventSource = CGEventSource(stateID: .hidSystemState)
-        
-        for char in text {
-            if let event = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: true) {
-                event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [char.utf16.first!])
-                event.post(tap: .cghidEventTap)
-            }
-            
-            if let event = CGEvent(keyboardEventSource: eventSource, virtualKey: 0, keyDown: false) {
-                event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [char.utf16.first!])
-                event.post(tap: .cghidEventTap)
-            }
-        }
-    }
     
     private func parseKeyCommand(_ command: String) -> (keyCode: CGKeyCode, modifiers: CGEventFlags) {
         var modifiers: CGEventFlags = []

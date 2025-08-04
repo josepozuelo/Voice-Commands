@@ -7,6 +7,13 @@ enum DictationState: Equatable {
     case recording(startTime: Date)
     case processing
     case error(String)
+    
+    var isRecording: Bool {
+        if case .recording = self {
+            return true
+        }
+        return false
+    }
 }
 
 @MainActor
@@ -19,6 +26,11 @@ class DictationManager: ObservableObject {
     private let accessibilityBridge: AccessibilityBridge
     private let gptService: GPTService
     var cancellables = Set<AnyCancellable>()
+    
+    // Track if continuous mode should be resumed after dictation
+    private var shouldResumeContinuousMode = false
+    
+    weak var commandManager: CommandManager?
     
     init(audioEngine: AudioEngine, whisperService: WhisperService, accessibilityBridge: AccessibilityBridge, gptService: GPTService) {
         self.audioEngine = audioEngine
@@ -35,10 +47,17 @@ class DictationManager: ObservableObject {
     
     func startDictation() async {
         do {
+            // If already recording, toggle it off (submit the dictation)
             if case .recording = state {
                 await stopDictation()
                 return
             }
+            
+            // Check if continuous mode is currently active
+            shouldResumeContinuousMode = commandManager?.isContinuousMode ?? false
+            print("🎤 DictationManager: Starting dictation")
+            print("   CommandManager continuous mode: \(commandManager?.isContinuousMode ?? false)")
+            print("   Should resume continuous mode: \(shouldResumeContinuousMode)")
             
             do {
                 _ = try accessibilityBridge.getEditContext()
@@ -61,6 +80,18 @@ class DictationManager: ObservableObject {
         }
     }
     
+    
+    func toggleDictation() async {
+        // This method is specifically for handling Control+K during dictation
+        if case .recording = state {
+            // If recording, stop and process the dictation
+            await stopDictation()
+        } else {
+            // If not recording, start dictation
+            await startDictation()
+        }
+    }
+    
     func stopDictation() async {
         await audioEngine.stopRecording()
         if case .recording = state {
@@ -74,7 +105,10 @@ class DictationManager: ObservableObject {
         showHUD = false
         
         // Return to continuous mode if it was active before
-        NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+        if shouldResumeContinuousMode {
+            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+            shouldResumeContinuousMode = false
+        }
     }
     
     private func processDictation() async {
@@ -97,7 +131,13 @@ class DictationManager: ObservableObject {
             showHUD = false
             
             // Return to continuous mode if it was active before
-            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+            if shouldResumeContinuousMode {
+                print("🎤 DictationManager: Posting resumeContinuousMode notification")
+                NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+                shouldResumeContinuousMode = false
+            } else {
+                print("🎤 DictationManager: Not resuming continuous mode (was not active before)")
+            }
         } catch {
             state = .error("Transcription failed: \(error.localizedDescription)")
         }

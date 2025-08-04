@@ -15,28 +15,12 @@ VoiceControl is a macOS voice command app built with SwiftUI that enables hands-
 2. **Design** (if needed): Create spec in `specs/` folder for complex features
 3. **Plan**: Use `tasks/todo.md` to list implementation steps
 4. **Implement**: Execute tasks after approval, check off items as completed
-5. **Commit**: Create commits at logical checkpoints 
+5. The user will build and debug themselves, don't attempt to do it. If you add a or remove a file, let the user know so they can add it to xcode. 
+6. **Commit**: User will commit the code themselves, so don't commit. 
 
 ## Development Commands
 
-### Building the Project
-- **IMPORTANT**: Always build from the workspace, not the project file
-- Build command: `xcodebuild -workspace VoiceControl.xcworkspace -scheme VoiceControl -configuration Debug build`
-- The workspace includes necessary dependencies like RealTimeCutVADLibrary
 
-
-### Environment Setup
-- Required environment variable: `OPENAI_API_KEY`
-- Add to shell profile: `export OPENAI_API_KEY="your-api-key-here"`
-- Minimum macOS: 13.0+ (Ventura)
-- Minimum Xcode: 15.0+
-
-### Release Build and Installation
-Every time you build a new release for testing, follow these steps:
-
-- Use a add_files_simple.py to make sure your xcode configuration is up to date
-
-**Note**: The permission reset is necessary because macOS tracks permissions by app signature, which changes with each build.
 
 ### Required Permissions
 The app requires these macOS permissions:

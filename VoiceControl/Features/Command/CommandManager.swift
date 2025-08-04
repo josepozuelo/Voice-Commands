@@ -30,7 +30,6 @@ class CommandManager: ObservableObject {
     @Published var error: Error?
     @Published var lastTranscription = ""
     @Published var isContinuousMode = false
-    @Published var wasInContinuousMode = false
     
     private let audioEngine = AudioEngine()
     private let whisperService = WhisperService()
@@ -84,10 +83,14 @@ class CommandManager: ObservableObject {
         // Listen for resume continuous mode notification
         NotificationCenter.default.publisher(for: .resumeContinuousMode)
             .sink { [weak self] _ in
-                guard let self = self, self.wasInContinuousMode else { return }
-                print("📥 CommandManager: Resuming continuous mode after dictation/edit")
+                guard let self = self else { return }
+                print("📥 CommandManager: Received resumeContinuousMode notification")
+                print("   Current isContinuousMode: \(self.isContinuousMode)")
+                print("   Current isListening: \(self.isListening)")
+                
+                // Always trust the notification - DictationManager knows best
+                print("   ✅ Resuming continuous mode after dictation/edit")
                 self.startContinuousMode()
-                self.wasInContinuousMode = false
             }
             .store(in: &cancellables)
     }
@@ -438,6 +441,11 @@ class EditManager: ObservableObject {
     private var recordingStartTime: Date?
     private var editContext: EditContext?
     
+    // Track if continuous mode should be resumed after edit
+    private var shouldResumeContinuousMode = false
+    
+    weak var commandManager: CommandManager?
+    
     init(audioEngine: AudioEngine,
          whisperService: WhisperService,
          accessibilityBridge: AccessibilityBridge,
@@ -468,16 +476,14 @@ class EditManager: ObservableObject {
     func setupHotkeyListener(hotkeyManager: HotkeyManager, commandManager: CommandManager) {
         // Connect Edit Mode hotkey
         hotkeyManager.editHotkeyPressed
-            .sink { [weak self, weak commandManager] in
-                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
+            .sink { [weak self] in
                 self?.startEditing()
             }
             .store(in: &cancellables)
         
         // Connect Edit Mode button from HUD
         NotificationCenter.default.publisher(for: .startEditMode)
-            .sink { [weak self, weak commandManager] _ in
-                commandManager?.wasInContinuousMode = commandManager?.isContinuousMode ?? false
+            .sink { [weak self] _ in
                 self?.startEditing()
             }
             .store(in: &cancellables)
@@ -493,6 +499,12 @@ class EditManager: ObservableObject {
         }
         
         guard state == .idle else { return }
+        
+        // Check if continuous mode is currently active
+        shouldResumeContinuousMode = commandManager?.isContinuousMode ?? false
+        print("✏️ EditManager: Starting edit mode")
+        print("   CommandManager continuous mode: \(commandManager?.isContinuousMode ?? false)")
+        print("   Should resume continuous mode: \(shouldResumeContinuousMode)")
         
         Task {
             do {
@@ -553,7 +565,13 @@ class EditManager: ObservableObject {
         }
         
         // Return to continuous mode if it was active before
-        NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+        if shouldResumeContinuousMode {
+            print("✏️ EditManager: Posting resumeContinuousMode notification (cancel)")
+            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+            shouldResumeContinuousMode = false
+        } else {
+            print("✏️ EditManager: Not resuming continuous mode (was not active before)")
+        }
     }
     
     private func processEditInstructions() async {
@@ -591,7 +609,13 @@ class EditManager: ObservableObject {
             resetState()
             
             // Return to continuous mode if it was active before
-            NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+            if shouldResumeContinuousMode {
+                print("✏️ EditManager: Posting resumeContinuousMode notification (after successful edit)")
+                NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+                shouldResumeContinuousMode = false
+            } else {
+                print("✏️ EditManager: Not resuming continuous mode (was not active before)")
+            }
             
         } catch {
             print("DEBUG: Edit Mode - Error: \(error)")
@@ -647,6 +671,13 @@ class EditManager: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             self?.state = .idle
             self?.resetState()
+            
+            // Return to continuous mode if it was active before, even after error
+            if self?.shouldResumeContinuousMode == true {
+                print("✏️ EditManager: Posting resumeContinuousMode notification (after error)")
+                NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
+                self?.shouldResumeContinuousMode = false
+            }
         }
     }
 }
