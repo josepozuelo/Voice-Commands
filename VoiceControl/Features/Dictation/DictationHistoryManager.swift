@@ -83,22 +83,35 @@ class DictationHistoryManager: ObservableObject {
         do {
             let audioData = try storage.getAudioData(for: entry)
 
+            // Verify it's a valid WAV file (minimum header size is 44 bytes)
+            guard audioData.count > 44 else {
+                throw NSError(domain: "DictationHistoryManager",
+                             code: 2,
+                             userInfo: [NSLocalizedDescriptionKey: "Invalid audio file (too small)"])
+            }
+
             // Create a temporary file for the audio player
             let tempURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("\(entry.id).wav")
             try audioData.write(to: tempURL)
 
             audioPlayer = try AVAudioPlayer(contentsOf: tempURL)
+            audioPlayer?.prepareToPlay()  // Prepare for better reliability
             audioPlayer?.delegate = AudioPlayerDelegate(onFinish: { [weak self] in
                 DispatchQueue.main.async {
                     self?.currentlyPlayingId = nil
                 }
             })
 
-            audioPlayer?.play()
-            currentlyPlayingId = entry.id
-
-            print("🔊 DictationHistoryManager: Playing entry \(entry.id)")
+            let success = audioPlayer?.play() ?? false
+            if success {
+                currentlyPlayingId = entry.id
+                print("🔊 DictationHistoryManager: Playing entry \(entry.id)")
+            } else {
+                throw NSError(domain: "DictationHistoryManager",
+                             code: 3,
+                             userInfo: [NSLocalizedDescriptionKey: "Audio player failed to start"])
+            }
         } catch {
             print("❌ DictationHistoryManager: Failed to play audio: \(error)")
             errorMessage = "Failed to play audio: \(error.localizedDescription)"

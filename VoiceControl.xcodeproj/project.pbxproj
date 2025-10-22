@@ -30,6 +30,9 @@
 		D59182AE2EA9495000A6AA8C /* DictationHistoryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182AD2EA9495000A6AA8C /* DictationHistoryStorage.swift */; };
 		D59182B12EA94A2200A6AA8C /* DictationHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B02EA94A2200A6AA8C /* DictationHistoryView.swift */; };
 		D59182B22EA94A2200A6AA8C /* DictationHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182AF2EA94A2200A6AA8C /* DictationHistoryManager.swift */; };
+		D59182B42EA94B3800A6AA8C /* DictationHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B32EA94B3800A6AA8C /* DictationHistoryEntry.swift */; };
+		D59182B62EA9535200A6AA8C /* AudioWAVConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B52EA9535200A6AA8C /* AudioWAVConverter.swift */; };
+		D59182B82EA9535A00A6AA8C /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B72EA9535A00A6AA8C /* Logger.swift */; };
 		D5A6580D2E400970009989D2 /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A6580B2E400970009989D2 /* OverlayWindowController.swift */; };
 		D5A6580E2E400970009989D2 /* OverlayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658082E400970009989D2 /* OverlayState.swift */; };
 		D5A6580F2E400970009989D2 /* ModeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658072E400970009989D2 /* ModeButton.swift */; };
@@ -72,6 +75,9 @@
 		D59182AD2EA9495000A6AA8C /* DictationHistoryStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistoryStorage.swift; sourceTree = "<group>"; };
 		D59182AF2EA94A2200A6AA8C /* DictationHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistoryManager.swift; sourceTree = "<group>"; };
 		D59182B02EA94A2200A6AA8C /* DictationHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistoryView.swift; sourceTree = "<group>"; };
+		D59182B32EA94B3800A6AA8C /* DictationHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistoryEntry.swift; sourceTree = "<group>"; };
+		D59182B52EA9535200A6AA8C /* AudioWAVConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioWAVConverter.swift; sourceTree = "<group>"; };
+		D59182B72EA9535A00A6AA8C /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		D5A658072E400970009989D2 /* ModeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeButton.swift; sourceTree = "<group>"; };
 		D5A658082E400970009989D2 /* OverlayState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayState.swift; sourceTree = "<group>"; };
 		D5A658092E400970009989D2 /* OverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayView.swift; sourceTree = "<group>"; };
@@ -178,6 +184,7 @@
 		A5000007000000000000007 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D59182B32EA94B3800A6AA8C /* DictationHistoryEntry.swift */,
 				A2000009000000000000009 /* Command.swift */,
 				A2000019000000000000019 /* CommandIntent.swift */,
 			);
@@ -195,6 +202,8 @@
 		A5000009000000000000009 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				D59182B72EA9535A00A6AA8C /* Logger.swift */,
+				D59182B52EA9535200A6AA8C /* AudioWAVConverter.swift */,
 				A2000010000000000000010 /* HotkeyManager.swift */,
 				A2000011000000000000011 /* TextSelection.swift */,
 				F390453067AD43618C6AE6E2 /* CircularBuffer.swift */,
@@ -367,9 +376,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D59182B82EA9535A00A6AA8C /* Logger.swift in Sources */,
 				A1000001000000000000001 /* VoiceControlApp.swift in Sources */,
 				A1000002000000000000002 /* Config.swift in Sources */,
 				A1000003000000000000003 /* AccessibilityBridge.swift in Sources */,
+				D59182B42EA94B3800A6AA8C /* DictationHistoryEntry.swift in Sources */,
 				A1000004000000000000004 /* AudioEngine.swift in Sources */,
 				A1000005000000000000005 /* WhisperService.swift in Sources */,
 				A1000006000000000000006 /* CommandHUD.swift in Sources */,
@@ -388,6 +399,7 @@
 				D5A658112E400970009989D2 /* OverlayView.swift in Sources */,
 				A1000013000000000000013 /* AudioPreprocessor.swift in Sources */,
 				A1000014000000000000014 /* VADSilenceDetector.swift in Sources */,
+				D59182B62EA9535200A6AA8C /* AudioWAVConverter.swift in Sources */,
 				A1000015000000000000015 /* VADChunker.swift in Sources */,
 				D59182AE2EA9495000A6AA8C /* DictationHistoryStorage.swift in Sources */,
 				A1000016000000000000016 /* CommandIntent.swift in Sources */,

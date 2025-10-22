@@ -46,9 +46,12 @@ class DictationHistoryStorage {
             duration: duration
         )
 
+        // Convert raw PCM to WAV format before saving
+        let wavData = AudioWAVConverter.convertToWAV(audioData: audioData)
+
         // Save audio file
         let audioURL = audioDirectory.appendingPathComponent(entry.audioFileName)
-        try audioData.write(to: audioURL)
+        try wavData.write(to: audioURL)
 
         // Load existing entries
         var entries = try loadHistory()

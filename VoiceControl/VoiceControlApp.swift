@@ -67,12 +67,6 @@ struct VoiceControlApp: App {
         })
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-
-        WindowGroup("Dictation History", id: "history") {
-            DictationHistoryView()
-                .environmentObject(dictationHistoryManager)
-        }
-        .defaultSize(width: 700, height: 500)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About VoiceControl") {
@@ -108,22 +102,31 @@ struct VoiceControlApp: App {
 
                 Divider()
 
-                Button("Show History") {
-                    openHistoryWindow()
+                Button("Show Home") {
+                    openHomeWindow()
                 }
                 .keyboardShortcut("h", modifiers: [.control])
             }
         }
+
+        #if os(macOS)
+        Window("Home", id: "home") {
+            DictationHistoryView()
+                .environmentObject(dictationHistoryManager)
+        }
+        .defaultSize(width: 700, height: 500)
+        #endif
     }
     
     private func setupApp() {
         DispatchQueue.main.async {
-            NSApp.setActivationPolicy(.accessory)
-            
+            NSApp.setActivationPolicy(.regular)
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.setupHUD()
                 self.connectComponents()
                 self.checkAccessibilityPermission()
+                self.setupAppDelegate()
             }
         }
     }
@@ -286,23 +289,56 @@ struct VoiceControlApp: App {
         alert.runModal()
     }
 
-    private func openHistoryWindow() {
-        // Open the history window using NSApp
-        if let url = URL(string: "voicecontrol://history") {
-            NSWorkspace.shared.open(url)
-        } else {
-            // Fallback: Use NSApp to open a new window
-            Task { @MainActor in
-                NSApp.activate(ignoringOtherApps: true)
-                // The WindowGroup will handle creating the window
+    private func setupAppDelegate() {
+        // Create and set custom app delegate to handle dock icon clicks
+        let delegate = VoiceControlAppDelegate()
+        delegate.openHomeWindow = {
+            self.openHomeWindow()
+        }
+        NSApp.delegate = delegate
+    }
+
+    private func openHomeWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Find and bring forward the home window
+        for window in NSApp.windows {
+            if window.title == "Home" {
+                window.makeKeyAndOrderFront(nil)
+                window.orderFrontRegardless()
+                return
             }
         }
+
+        print("⚠️ Home window not found - may need to be created")
+    }
+}
+
+// MARK: - App Delegate for Dock Icon Handling
+
+class VoiceControlAppDelegate: NSObject, NSApplicationDelegate {
+    var openHomeWindow: (() -> Void)?
+
+    // Called when user clicks dock icon while app is already running
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        print("🖱️ Dock icon clicked - opening home window")
+        openHomeWindow?()
+        return true
     }
 }
 
 struct ContentView: View {
+    @Environment(\.openWindow) private var openWindow
+    @State private var hasOpenedHome = false
+
     var body: some View {
         EmptyView()
+            .onAppear {
+                if !hasOpenedHome {
+                    openWindow(id: "home")
+                    hasOpenedHome = true
+                }
+            }
     }
 }
 

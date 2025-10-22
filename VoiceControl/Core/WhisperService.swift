@@ -141,33 +141,7 @@ class OpenAIService {
     }
     
     private func convertToWAV(audioData: Data) -> Data {
-        let pcmData = audioData
-        let sampleRate: Int32 = Int32(Config.audioSampleRate)
-        let numChannels: Int16 = 1
-        let bitsPerSample: Int16 = 32
-        let byteRate = sampleRate * Int32(numChannels) * Int32(bitsPerSample) / 8
-        let blockAlign = numChannels * bitsPerSample / 8
-        let dataSize = Int32(pcmData.count)
-        
-        var header = Data()
-        
-        header.append("RIFF".data(using: .ascii)!)
-        header.append(withUnsafeBytes(of: Int32(36 + dataSize).littleEndian) { Data($0) })
-        header.append("WAVE".data(using: .ascii)!)
-        
-        header.append("fmt ".data(using: .ascii)!)
-        header.append(withUnsafeBytes(of: Int32(16).littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: Int16(3).littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
-        header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
-        
-        header.append("data".data(using: .ascii)!)
-        header.append(withUnsafeBytes(of: dataSize.littleEndian) { Data($0) })
-        
-        return header + pcmData
+        return AudioWAVConverter.convertToWAV(audioData: audioData, sampleRate: Config.audioSampleRate)
     }
 }
 
