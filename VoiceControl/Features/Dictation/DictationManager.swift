@@ -20,24 +20,28 @@ enum DictationState: Equatable {
 class DictationManager: ObservableObject {
     @Published private(set) var state: DictationState = .idle
     @Published var showHUD = false
-    
+
     private let audioEngine: AudioEngine
     private let whisperService: WhisperService
     private let accessibilityBridge: AccessibilityBridge
     private let gptService: GPTService
     var cancellables = Set<AnyCancellable>()
-    
+
     // Track if continuous mode should be resumed after dictation
     private var shouldResumeContinuousMode = false
-    
+
+    // Track recording start time for duration calculation
+    private var recordingStartTime: Date?
+
     weak var commandManager: CommandManager?
-    
+    weak var historyManager: DictationHistoryManager?
+
     init(audioEngine: AudioEngine, whisperService: WhisperService, accessibilityBridge: AccessibilityBridge, gptService: GPTService) {
         self.audioEngine = audioEngine
         self.whisperService = whisperService
         self.accessibilityBridge = accessibilityBridge
         self.gptService = gptService
-        
+
         setupBindings()
     }
     
@@ -67,9 +71,10 @@ class DictationManager: ObservableObject {
                 return
             }
             
-            state = .recording(startTime: Date())
+            recordingStartTime = Date()
+            state = .recording(startTime: recordingStartTime!)
             showHUD = true
-            
+
             try await audioEngine.startRecording(
                 enableSilenceDetection: false,
                 maxDuration: Config.DictationMode.maxRecordingDuration
@@ -101,9 +106,10 @@ class DictationManager: ObservableObject {
     
     func cancelDictation() async {
         await audioEngine.stopRecording()
+        recordingStartTime = nil
         state = .idle
         showHUD = false
-        
+
         // Return to continuous mode if it was active before
         if shouldResumeContinuousMode {
             NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
@@ -113,23 +119,49 @@ class DictationManager: ObservableObject {
     
     private func processDictation() async {
         state = .processing
-        
+
         do {
             guard let audioData = await audioEngine.getRecordedAudio() else {
                 throw NSError(domain: "DictationManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No audio recorded"])
             }
-            
-            var transcribedText = try await whisperService.transcribe(audioData: audioData)
-            
-            if Config.DictationMode.formatWithGPT {
-                transcribedText = try await gptService.formatDictation(transcribedText)
+
+            // Calculate duration
+            let duration: TimeInterval
+            if let startTime = recordingStartTime {
+                duration = Date().timeIntervalSince(startTime)
+            } else {
+                duration = 0
             }
-            
-            try accessibilityBridge.insertTextAtCursor(transcribedText)
-            
+
+            var transcribedText = try await whisperService.transcribe(audioData: audioData)
+
+            var formattedText: String? = nil
+            if Config.DictationMode.formatWithGPT {
+                formattedText = try await gptService.formatDictation(transcribedText)
+            }
+
+            let textToInsert = formattedText ?? transcribedText
+
+            print("DEBUG: DictationManager - About to call insertTextAtCursor with text: '\(textToInsert.prefix(50))...'")
+            try accessibilityBridge.insertTextAtCursor(textToInsert)
+            print("DEBUG: DictationManager - insertTextAtCursor completed")
+
+            // Save to history if enabled
+            if Config.History.enableHistory, let historyManager = historyManager {
+                historyManager.saveEntry(
+                    transcribedText: transcribedText,
+                    audioData: audioData,
+                    duration: duration,
+                    formattedText: formattedText
+                )
+            }
+
+            // Reset recording start time
+            recordingStartTime = nil
+
             state = .idle
             showHUD = false
-            
+
             // Return to continuous mode if it was active before
             if shouldResumeContinuousMode {
                 print("🎤 DictationManager: Posting resumeContinuousMode notification")
@@ -139,6 +171,7 @@ class DictationManager: ObservableObject {
                 print("🎤 DictationManager: Not resuming continuous mode (was not active before)")
             }
         } catch {
+            recordingStartTime = nil
             state = .error("Transcription failed: \(error.localizedDescription)")
         }
     }

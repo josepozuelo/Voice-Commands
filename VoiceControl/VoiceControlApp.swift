@@ -7,28 +7,30 @@ struct VoiceControlApp: App {
     @StateObject private var hotkeyManager = HotkeyManager()
     @StateObject private var editManager: EditManager
     @StateObject private var dictationManager: DictationManager
+    @StateObject private var dictationHistoryManager: DictationHistoryManager
     @StateObject private var overlayViewModel: OverlayViewModel
     @State private var overlayWindowController: OverlayWindowController?
     @State private var hasSetupApp = false
     @State private var hasShownPermissionDialog = false
     @State private var isCheckingPermissions = false
-    
+
     init() {
         let audioEngine = AudioEngine()
         let openAIService = OpenAIService()
         let whisperService = WhisperService(openAIService: openAIService)
         let accessibilityBridge = AccessibilityBridge()
         let gptService = GPTService(openAIService: openAIService)
-        
+
         let commandManager = CommandManager()
-        
+        let dictationHistoryManager = DictationHistoryManager()
+
         let editManager = EditManager(
             audioEngine: audioEngine,
             whisperService: whisperService,
             accessibilityBridge: accessibilityBridge,
             gptService: gptService
         )
-        
+
         let dictationManager = DictationManager(
             audioEngine: audioEngine,
             whisperService: whisperService,
@@ -36,12 +38,14 @@ struct VoiceControlApp: App {
             gptService: gptService
         )
         dictationManager.commandManager = commandManager
+        dictationManager.historyManager = dictationHistoryManager
         editManager.commandManager = commandManager
-        
+
         _commandManager = StateObject(wrappedValue: commandManager)
         _editManager = StateObject(wrappedValue: editManager)
         _dictationManager = StateObject(wrappedValue: dictationManager)
-        
+        _dictationHistoryManager = StateObject(wrappedValue: dictationHistoryManager)
+
         _overlayViewModel = StateObject(wrappedValue: OverlayViewModel(
             commandManager: commandManager,
             editManager: editManager,
@@ -63,6 +67,12 @@ struct VoiceControlApp: App {
         })
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+
+        WindowGroup("Dictation History", id: "history") {
+            DictationHistoryView()
+                .environmentObject(dictationHistoryManager)
+        }
+        .defaultSize(width: 700, height: 500)
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About VoiceControl") {
@@ -74,27 +84,34 @@ struct VoiceControlApp: App {
                     checkPermissionsManually()
                 }
                 .keyboardShortcut("p", modifiers: [.command])
-                
+
                 Button("Test Hotkeys") {
                     testHotkeysManually()
                 }
                 .keyboardShortcut("t", modifiers: [.command])
-                
+
                 Divider()
-                
+
                 Button("Dictation Mode") {
                     Task { @MainActor in
                         await dictationManager.toggleDictation()
                     }
                 }
                 .keyboardShortcut("k", modifiers: [.control])
-                
+
                 Button("Edit Mode") {
                     Task { @MainActor in
                         editManager.startEditing()
                     }
                 }
                 .keyboardShortcut("l", modifiers: [.control])
+
+                Divider()
+
+                Button("Show History") {
+                    openHistoryWindow()
+                }
+                .keyboardShortcut("h", modifiers: [.control])
             }
         }
     }
@@ -250,23 +267,36 @@ struct VoiceControlApp: App {
     private func testHotkeysManually() {
         print("🧪 Manual hotkey test requested")
         hotkeyManager.reinitialize()
-        
+
         let alert = NSAlert()
         alert.messageText = "Hotkey Test"
         alert.informativeText = """
         Testing hotkeys now...
-        
+
         Available hotkeys:
         • Control+J - Voice Commands
         • Control+K - Dictation Mode
         • Control+L - Edit Mode
-        
+
         Watch the console for debug messages to see if hotkeys are working.
         If you see key events logged, the hotkeys are functioning correctly!
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    private func openHistoryWindow() {
+        // Open the history window using NSApp
+        if let url = URL(string: "voicecontrol://history") {
+            NSWorkspace.shared.open(url)
+        } else {
+            // Fallback: Use NSApp to open a new window
+            Task { @MainActor in
+                NSApp.activate(ignoringOtherApps: true)
+                // The WindowGroup will handle creating the window
+            }
+        }
     }
 }
 

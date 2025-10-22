@@ -146,24 +146,38 @@ class AccessibilityBridge {
     /// Clipboard is restored automatically.
     /// Throws if **all** tiers fail.
     func insertTextAtCursor(_ text: String) throws {
+        print("DEBUG: insertTextAtCursor called with text: '\(text.prefix(50))...'")
+
         guard HotkeyManager.hasAccessibilityPermission() else {
             throw AccessibilityError.noAccessibilityPermission
         }
-        
+
         let element = try focusedElement()
-        
+
         // Tier 1: Direct AX API
+        print("DEBUG: Attempting Tier 1 (Direct AX API)")
         if try replaceSelectionViaAX(in: element, with: text) {
+            print("DEBUG: Tier 1 succeeded - returning")
             return
         }
-        
+        print("DEBUG: Tier 1 failed - trying Tier 2")
+
         // Tier 2: Clipboard paste (skip for secure fields)
-        if !isSecureField(element), pasteViaClipboard(text) {
-            return
+        if !isSecureField(element) {
+            print("DEBUG: Attempting Tier 2 (Clipboard paste)")
+            if pasteViaClipboard(text) {
+                print("DEBUG: Tier 2 succeeded - returning")
+                return
+            }
+            print("DEBUG: Tier 2 failed - trying Tier 3")
+        } else {
+            print("DEBUG: Skipping Tier 2 (secure field)")
         }
-        
+
         // Tier 3: Synthetic keystrokes
+        print("DEBUG: Attempting Tier 3 (Synthetic keystrokes)")
         simulateKeyboardInput(text)
+        print("DEBUG: Tier 3 completed")
     }
     
     // MARK: - Insert-text helpers
@@ -210,12 +224,15 @@ class AccessibilityBridge {
     
     /// Tier-1
     private func replaceSelectionViaAX(in element: AXUIElement, with text: String) throws -> Bool {
+        print("DEBUG: replaceSelectionViaAX - checking if can set attributes")
         // Check if we can set both value and selected text range
         guard canSet(kAXValueAttribute as CFString, on: element),
               canSet(kAXSelectedTextRangeAttribute as CFString, on: element) else {
+            print("DEBUG: replaceSelectionViaAX - cannot set required attributes")
             return false
         }
-        
+        print("DEBUG: replaceSelectionViaAX - can set attributes")
+
         // Get current selection range
         var rangeValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
@@ -224,15 +241,18 @@ class AccessibilityBridge {
             &rangeValue
         ) == .success,
               let axVal = rangeValue else {
+            print("DEBUG: replaceSelectionViaAX - failed to get selection range")
             return false
         }
-        
+
         let axValue = axVal as! AXValue
         var cfRange = CFRange()
         guard AXValueGetValue(axValue, .cfRange, &cfRange) else {
+            print("DEBUG: replaceSelectionViaAX - failed to extract CFRange")
             return false
         }
-        
+        print("DEBUG: replaceSelectionViaAX - current range: location=\(cfRange.location), length=\(cfRange.length)")
+
         // Get current full text
         var fullValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(
@@ -241,25 +261,30 @@ class AccessibilityBridge {
             &fullValue
         ) == .success,
               let fullText = fullValue as? String else {
+            print("DEBUG: replaceSelectionViaAX - failed to get full text")
             return false
         }
-        
+        print("DEBUG: replaceSelectionViaAX - current full text length: \(fullText.count)")
+
         // Splice the new text into the full text
         let nsFullText = fullText as NSString
         let newFullText = nsFullText.replacingCharacters(
             in: NSRange(location: cfRange.location, length: cfRange.length),
             with: text
         )
-        
+        print("DEBUG: replaceSelectionViaAX - new full text length: \(newFullText.count)")
+
         // Write back the new full text
         guard AXUIElementSetAttributeValue(
             element,
             kAXValueAttribute as CFString,
             newFullText as CFTypeRef
         ) == .success else {
+            print("DEBUG: replaceSelectionViaAX - failed to set new value")
             return false
         }
-        
+        print("DEBUG: replaceSelectionViaAX - successfully set new value")
+
         // Move caret to end of inserted text
         let newCursorPosition = cfRange.location + text.count
         var newRange = CFRange(location: newCursorPosition, length: 0)
@@ -269,8 +294,10 @@ class AccessibilityBridge {
                 kAXSelectedTextRangeAttribute as CFString,
                 newAXRange
             )
+            print("DEBUG: replaceSelectionViaAX - moved cursor to position \(newCursorPosition)")
         }
-        
+
+        print("DEBUG: replaceSelectionViaAX - SUCCESS, returning true")
         return true
     }
     

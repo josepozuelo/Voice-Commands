@@ -22,6 +22,12 @@ struct Config {
         static let formatWithGPT = true  // Use GPT for light formatting
         static let insertAtCursor = true  // Always insert at current cursor position
     }
+
+    // History Configuration
+    struct History {
+        static let maxEntries = 100  // Maximum number of history entries to keep
+        static let enableHistory = true  // Enable/disable history saving
+    }
     
     static let openAIKey: String = {
         // For development: First try environment variable
