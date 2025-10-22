@@ -989,14 +989,13 @@ class EditModeHUDWindowController: NSWindowController {
     }
     
     private func setupEscapeKeyMonitor() {
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Use global monitor so escape works even when window doesn't have focus
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Escape key
                 if self?.editManager.state != .idle {
                     self?.editManager.cancelEditing()
-                    return nil // Consume the event
                 }
             }
-            return event
         }
     }
     

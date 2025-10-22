@@ -33,6 +33,9 @@ class DictationManager: ObservableObject {
     // Track recording start time for duration calculation
     private var recordingStartTime: Date?
 
+    // Prevent re-entrant cancel calls
+    private var isCancelling = false
+
     weak var commandManager: CommandManager?
     weak var historyManager: DictationHistoryManager?
 
@@ -62,14 +65,6 @@ class DictationManager: ObservableObject {
             print("🎤 DictationManager: Starting dictation")
             print("   CommandManager continuous mode: \(commandManager?.isContinuousMode ?? false)")
             print("   Should resume continuous mode: \(shouldResumeContinuousMode)")
-            
-            do {
-                _ = try accessibilityBridge.getEditContext()
-            } catch {
-                state = .error("No text field found. Please click in a text field first.")
-                showHUD = true
-                return
-            }
             
             recordingStartTime = Date()
             state = .recording(startTime: recordingStartTime!)
@@ -105,25 +100,46 @@ class DictationManager: ObservableObject {
     }
     
     func cancelDictation() async {
+        // Prevent re-entrant calls
+        guard !isCancelling else { return }
+        isCancelling = true
+
         await audioEngine.stopRecording()
-        recordingStartTime = nil
-        state = .idle
-        showHUD = false
+
+        // Add a small delay to ensure audio engine has fully stopped
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+
+        // Batch all state updates in a single animation transaction
+        // This prevents multiple constraint update passes in the NSPanel
+        await withAnimation {
+            self.recordingStartTime = nil
+            self.state = .idle
+            self.showHUD = false
+        }
+
+        self.isCancelling = false
 
         // Return to continuous mode if it was active before
-        if shouldResumeContinuousMode {
+        if self.shouldResumeContinuousMode {
             NotificationCenter.default.post(name: .resumeContinuousMode, object: nil)
-            shouldResumeContinuousMode = false
+            self.shouldResumeContinuousMode = false
         }
     }
     
     private func processDictation() async {
+        let pipelineStartTime = Date()
+        print("⏱️ [DICTATION PIPELINE] Starting at \(pipelineStartTime)")
+
         state = .processing
 
         do {
+            // Stage 1: Get audio data
+            let stage1Start = Date()
             guard let audioData = await audioEngine.getRecordedAudio() else {
                 throw NSError(domain: "DictationManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No audio recorded"])
             }
+            let stage1Duration = Date().timeIntervalSince(stage1Start)
+            print("⏱️ [STAGE 1] Audio retrieval: \(String(format: "%.3f", stage1Duration))s")
 
             // Calculate duration
             let duration: TimeInterval
@@ -133,20 +149,34 @@ class DictationManager: ObservableObject {
                 duration = 0
             }
 
+            // Stage 2: Whisper transcription
+            let stage2Start = Date()
             var transcribedText = try await whisperService.transcribe(audioData: audioData)
+            let stage2Duration = Date().timeIntervalSince(stage2Start)
+            print("⏱️ [STAGE 2] Whisper transcription: \(String(format: "%.3f", stage2Duration))s - Result: '\(transcribedText.prefix(50))'")
 
+            // Stage 3: GPT formatting
             var formattedText: String? = nil
+            var stage3Duration: TimeInterval = 0
             if Config.DictationMode.formatWithGPT {
+                let stage3Start = Date()
                 formattedText = try await gptService.formatDictation(transcribedText)
+                stage3Duration = Date().timeIntervalSince(stage3Start)
+                print("⏱️ [STAGE 3] GPT formatting: \(String(format: "%.3f", stage3Duration))s - Result: '\(formattedText?.prefix(50) ?? "nil")'")
+            } else {
+                print("⏱️ [STAGE 3] GPT formatting: SKIPPED (disabled in config)")
             }
 
             let textToInsert = formattedText ?? transcribedText
 
-            print("DEBUG: DictationManager - About to call insertTextAtCursor with text: '\(textToInsert.prefix(50))...'")
+            // Stage 4: Text insertion
+            let stage4Start = Date()
             try accessibilityBridge.insertTextAtCursor(textToInsert)
-            print("DEBUG: DictationManager - insertTextAtCursor completed")
+            let stage4Duration = Date().timeIntervalSince(stage4Start)
+            print("⏱️ [STAGE 4] Text insertion: \(String(format: "%.3f", stage4Duration))s")
 
-            // Save to history if enabled
+            // Stage 5: History storage
+            let stage5Start = Date()
             if Config.History.enableHistory, let historyManager = historyManager {
                 historyManager.saveEntry(
                     transcribedText: transcribedText,
@@ -155,6 +185,12 @@ class DictationManager: ObservableObject {
                     formattedText: formattedText
                 )
             }
+            let stage5Duration = Date().timeIntervalSince(stage5Start)
+            print("⏱️ [STAGE 5] History storage: \(String(format: "%.3f", stage5Duration))s")
+
+            // Total pipeline duration
+            let totalDuration = Date().timeIntervalSince(pipelineStartTime)
+            print("⏱️ [PIPELINE COMPLETE] Total: \(String(format: "%.3f", totalDuration))s | Breakdown: Audio=\(String(format: "%.3f", stage1Duration))s, Whisper=\(String(format: "%.3f", stage2Duration))s, GPT=\(String(format: "%.3f", stage3Duration))s, Insert=\(String(format: "%.3f", stage4Duration))s, History=\(String(format: "%.3f", stage5Duration))s")
 
             // Reset recording start time
             recordingStartTime = nil
@@ -171,6 +207,8 @@ class DictationManager: ObservableObject {
                 print("🎤 DictationManager: Not resuming continuous mode (was not active before)")
             }
         } catch {
+            let totalDuration = Date().timeIntervalSince(pipelineStartTime)
+            print("⏱️ [PIPELINE ERROR] Failed after \(String(format: "%.3f", totalDuration))s: \(error.localizedDescription)")
             recordingStartTime = nil
             state = .error("Transcription failed: \(error.localizedDescription)")
         }
@@ -242,16 +280,14 @@ struct DictationModeHUD: View {
         VStack(spacing: 12) {
             HStack {
                 recordingIndicator
-                
+
                 Text("Recording...")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
-                
+
                 Spacer()
-                
-                TimeElapsedView(startTime: startTime)
             }
-            
+
             Button(action: {
                 Task {
                     await manager.stopDictation()
@@ -270,7 +306,7 @@ struct DictationModeHUD: View {
                 .cornerRadius(6)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             Text("Press ⌃K to stop")
                 .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.6))
@@ -318,46 +354,21 @@ struct DictationModeHUD: View {
     }
     
     private var recordingIndicator: some View {
+        RecordingIndicator()
+    }
+}
+
+struct RecordingIndicator: View {
+    var body: some View {
         ZStack {
             Circle()
                 .fill(Color.red.opacity(0.8))
                 .frame(width: 40, height: 40)
-            
+
             Image(systemName: "mic.fill")
                 .foregroundColor(.white)
                 .font(.system(size: 20))
         }
-        .scaleEffect(1.1)
-        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: true)
-    }
-}
-
-struct TimeElapsedView: View {
-    let startTime: Date
-    @State private var elapsedTime: TimeInterval = 0
-    @State private var timer: Timer?
-    
-    var body: some View {
-        Text(formatTime(elapsedTime))
-            .font(.system(size: 14, weight: .medium, design: .monospaced))
-            .foregroundColor(.white.opacity(0.8))
-            .onAppear {
-                timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-                    DispatchQueue.main.async {
-                        elapsedTime = Date().timeIntervalSince(startTime)
-                    }
-                }
-            }
-            .onDisappear {
-                timer?.invalidate()
-                timer = nil
-            }
-    }
-    
-    private func formatTime(_ timeInterval: TimeInterval) -> String {
-        let minutes = Int(timeInterval) / 60
-        let seconds = Int(timeInterval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 
@@ -411,14 +422,13 @@ class DictationModeHUDWindowController: NSWindowController {
     }
     
     private func setupEscapeKeyMonitoring() {
-        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        // Use global monitor so escape works even when window doesn't have focus
+        escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 {
                 Task { @MainActor in
                     await self?.manager.cancelDictation()
                 }
-                return nil
             }
-            return event
         }
     }
 }

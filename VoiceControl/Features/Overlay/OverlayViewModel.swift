@@ -61,7 +61,7 @@ final class OverlayViewModel: ObservableObject {
             editManager.cancelEditing()
         case .dictation:
             Task {
-                await dictationManager.stopDictation()
+                await dictationManager.cancelDictation()
             }
         default:
             break
