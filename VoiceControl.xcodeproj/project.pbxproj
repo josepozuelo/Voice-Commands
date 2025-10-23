@@ -14,7 +14,6 @@
 		A1000003000000000000003 /* AccessibilityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003000000000000003 /* AccessibilityBridge.swift */; };
 		A1000004000000000000004 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004000000000000004 /* AudioEngine.swift */; };
 		A1000005000000000000005 /* WhisperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005000000000000005 /* WhisperService.swift */; };
-		A1000006000000000000006 /* CommandHUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006000000000000006 /* CommandHUD.swift */; };
 		A1000007000000000000007 /* CommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007000000000000007 /* CommandManager.swift */; };
 		A1000008000000000000008 /* CommandMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008000000000000008 /* CommandMatcher.swift */; };
 		A1000009000000000000009 /* Command.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009000000000000009 /* Command.swift */; };
@@ -33,6 +32,7 @@
 		D59182B42EA94B3800A6AA8C /* DictationHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B32EA94B3800A6AA8C /* DictationHistoryEntry.swift */; };
 		D59182B62EA9535200A6AA8C /* AudioWAVConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B52EA9535200A6AA8C /* AudioWAVConverter.swift */; };
 		D59182B82EA9535A00A6AA8C /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B72EA9535A00A6AA8C /* Logger.swift */; };
+		D59182BA2EA9AC0500A6AA8C /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D59182B92EA9AC0500A6AA8C /* WaveformView.swift */; };
 		D5A6580D2E400970009989D2 /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A6580B2E400970009989D2 /* OverlayWindowController.swift */; };
 		D5A6580E2E400970009989D2 /* OverlayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658082E400970009989D2 /* OverlayState.swift */; };
 		D5A6580F2E400970009989D2 /* ModeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658072E400970009989D2 /* ModeButton.swift */; };
@@ -50,7 +50,6 @@
 		A2000003000000000000003 /* AccessibilityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityBridge.swift; sourceTree = "<group>"; };
 		A2000004000000000000004 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
 		A2000005000000000000005 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
-		A2000006000000000000006 /* CommandHUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandHUD.swift; sourceTree = "<group>"; };
 		A2000007000000000000007 /* CommandManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandManager.swift; sourceTree = "<group>"; };
 		A2000008000000000000008 /* CommandMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandMatcher.swift; sourceTree = "<group>"; };
 		A2000009000000000000009 /* Command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Command.swift; sourceTree = "<group>"; };
@@ -78,6 +77,7 @@
 		D59182B32EA94B3800A6AA8C /* DictationHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationHistoryEntry.swift; sourceTree = "<group>"; };
 		D59182B52EA9535200A6AA8C /* AudioWAVConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioWAVConverter.swift; sourceTree = "<group>"; };
 		D59182B72EA9535A00A6AA8C /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		D59182B92EA9AC0500A6AA8C /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		D5A658072E400970009989D2 /* ModeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeButton.swift; sourceTree = "<group>"; };
 		D5A658082E400970009989D2 /* OverlayState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayState.swift; sourceTree = "<group>"; };
 		D5A658092E400970009989D2 /* OverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayView.swift; sourceTree = "<group>"; };
@@ -174,6 +174,7 @@
 		A5000006000000000000006 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				D59182B92EA9AC0500A6AA8C /* WaveformView.swift */,
 				D5A6580C2E400970009989D2 /* Overlay */,
 				A5000010000000000000010 /* Command */,
 				A5000011000000000000011 /* Dictation */,
@@ -214,7 +215,6 @@
 		A5000010000000000000010 /* Command */ = {
 			isa = PBXGroup;
 			children = (
-				A2000006000000000000006 /* CommandHUD.swift */,
 				A2000007000000000000007 /* CommandManager.swift */,
 				A2000008000000000000008 /* CommandMatcher.swift */,
 			);
@@ -383,7 +383,6 @@
 				D59182B42EA94B3800A6AA8C /* DictationHistoryEntry.swift in Sources */,
 				A1000004000000000000004 /* AudioEngine.swift in Sources */,
 				A1000005000000000000005 /* WhisperService.swift in Sources */,
-				A1000006000000000000006 /* CommandHUD.swift in Sources */,
 				A1000007000000000000007 /* CommandManager.swift in Sources */,
 				A1000008000000000000008 /* CommandMatcher.swift in Sources */,
 				A1000009000000000000009 /* Command.swift in Sources */,
@@ -391,6 +390,7 @@
 				A1000011000000000000011 /* TextSelection.swift in Sources */,
 				DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */,
 				D59182B12EA94A2200A6AA8C /* DictationHistoryView.swift in Sources */,
+				D59182BA2EA9AC0500A6AA8C /* WaveformView.swift in Sources */,
 				D59182B22EA94A2200A6AA8C /* DictationHistoryManager.swift in Sources */,
 				D5A6580D2E400970009989D2 /* OverlayWindowController.swift in Sources */,
 				D5A6580E2E400970009989D2 /* OverlayState.swift in Sources */,

@@ -129,35 +129,45 @@ struct OverlayView: View {
     }
     
     // MARK: - Dictation Mode
-    
+
     private func dictationView(phase: OverlayState.DictationPhase) -> some View {
-        HStack(spacing: 12) {
-            dictationIcon(for: phase)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(dictationTitle(for: phase))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                if case .error(let message) = phase {
-                    Text(message)
-                        .font(.system(size: 12))
-                        .foregroundColor(.red)
-                        .lineLimit(2)
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                dictationIcon(for: phase)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(dictationTitle(for: phase))
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.primary)
+
+                    if case .error(let message) = phase {
+                        Text(message)
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                            .lineLimit(2)
+                    }
                 }
+
+                Spacer()
+
+                Button(action: viewModel.stop) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
             }
-            
-            Spacer()
-            
-            Button(action: viewModel.stop) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.secondary)
+
+            // Waveform visualization when recording
+            if case .listening = phase, !viewModel.amplitudeSamples.isEmpty {
+                WaveformView(amplitudes: viewModel.amplitudeSamples)
+                    .frame(height: 40)
+                    .padding(.horizontal, 4)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
-        .frame(minWidth: 250, maxWidth: 400, minHeight: 60)
+        .padding(.vertical, 8)
+        .frame(minWidth: 250, maxWidth: 400)
     }
     
     // MARK: - Helper Views

@@ -8,11 +8,12 @@ final class OverlayViewModel: ObservableObject {
     @Published private(set) var recognizedText: String = ""
     @Published private(set) var errorMessage: String = ""
     @Published private(set) var isHovering: Bool = false
-    
+    @Published private(set) var amplitudeSamples: [Float] = []
+
     private let commandManager: CommandManager
     private let editManager: EditManager
     private let dictationManager: DictationManager
-    
+
     private var cancellables = Set<AnyCancellable>()
     
     init(commandManager: CommandManager, editManager: EditManager, dictationManager: DictationManager) {
@@ -148,6 +149,13 @@ final class OverlayViewModel: ObservableObject {
                     self.errorMessage = message
                     self.transition(to: .dictation(.error(message)))
                 }
+            }
+            .store(in: &cancellables)
+
+        // Observe DictationManager amplitude samples for waveform
+        dictationManager.$amplitudeSamples
+            .sink { [weak self] samples in
+                self?.amplitudeSamples = samples
             }
             .store(in: &cancellables)
         
