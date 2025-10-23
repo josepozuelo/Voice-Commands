@@ -96,6 +96,9 @@ iOSInjectionProject/
 VoiceControl/Config/Secrets.xcconfig
 config.json
 
+# Xcode Schemes with Environment Variables (contains API keys)
+VoiceControl.xcodeproj/xcshareddata/xcschemes/VoiceControl.xcscheme
+
 # Environment files
 .env
 .env.local
