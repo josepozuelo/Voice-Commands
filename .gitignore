@@ -102,3 +102,4 @@ VoiceControl.xcodeproj/xcshareddata/xcschemes/VoiceControl.xcscheme
 # Environment files
 .env
 .env.local
+specs/

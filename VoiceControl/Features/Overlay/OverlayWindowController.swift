@@ -6,6 +6,7 @@ class OverlayWindowController: NSWindowController {
     private var viewModel: OverlayViewModel
     private var cancellables = Set<AnyCancellable>()
     private var eventMonitor: Any?
+    private var fixedBottomY: CGFloat = 0
     
     init(viewModel: OverlayViewModel) {
         self.viewModel = viewModel
@@ -31,7 +32,7 @@ class OverlayWindowController: NSWindowController {
     
     private func setupWindow() {
         guard let window = window as? NSPanel else { return }
-        
+
         // Configure as non-activating panel
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
@@ -40,10 +41,22 @@ class OverlayWindowController: NSWindowController {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
-        
+
         // Always show the window
         window.orderFrontRegardless()
         positionWindow()
+
+        // Observe window frame changes to maintain fixed bottom
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidResize),
+            name: NSWindow.didResizeNotification,
+            object: window
+        )
+    }
+
+    @objc private func windowDidResize() {
+        maintainFixedBottom()
     }
     
     private func setupContent() {
@@ -67,7 +80,7 @@ class OverlayWindowController: NSWindowController {
     
     private func updateWindowSize(for state: OverlayState) {
         guard let window = window else { return }
-        
+
         let targetSize: NSSize
         switch state {
         case .collapsed:
@@ -84,39 +97,56 @@ class OverlayWindowController: NSWindowController {
         case .edit, .dictation:
             targetSize = NSSize(width: 350, height: 76)
         }
-        
+
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.2
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            
+
             // Keep the left edge and bottom fixed, expand to the right
             let currentLeftX = window.frame.minX
-            let currentBottomY = window.frame.minY
-            
+
             let newFrame = NSRect(
                 x: currentLeftX,
-                y: currentBottomY,
+                y: fixedBottomY,
                 width: targetSize.width,
                 height: targetSize.height
             )
             window.animator().setFrame(newFrame, display: true)
         }
     }
+
+    private func maintainFixedBottom() {
+        guard let window = window else { return }
+
+        // Re-anchor the bottom if it has drifted
+        if window.frame.minY != fixedBottomY {
+            let newFrame = NSRect(
+                x: window.frame.minX,
+                y: fixedBottomY,
+                width: window.frame.width,
+                height: window.frame.height
+            )
+            window.setFrame(newFrame, display: true, animate: false)
+        }
+    }
     
     private func positionWindow() {
         guard let window = window,
               let screen = NSScreen.main else { return }
-        
+
         let screenFrame = screen.visibleFrame
         let collapsedWidth: CGFloat = 56
         let expandedWidth: CGFloat = 216
-        
+
         // Position so that when expanded, it will be centered
         // This means the collapsed window's left edge should be offset from center
         let x = screenFrame.midX - expandedWidth / 2
         let y = screenFrame.minY + 40 // 40px from bottom
-        
+
         window.setFrameOrigin(NSPoint(x: x, y: y))
+
+        // Store the fixed bottom position
+        fixedBottomY = y
     }
     
     private func setupEscapeKeyMonitor() {
@@ -135,5 +165,6 @@ class OverlayWindowController: NSWindowController {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        NotificationCenter.default.removeObserver(self)
     }
 }

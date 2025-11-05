@@ -8,17 +8,20 @@ struct WaveformView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            HStack(alignment: .center, spacing: 2) {
-                ForEach(0..<barCount, id: \.self) { index in
-                    WaveformBar(
-                        amplitude: amplitudeForIndex(index),
-                        maxAmplitude: maxAmplitude,
-                        height: geometry.size.height
-                    )
+            VStack {
+                Spacer()
+                HStack(alignment: .center, spacing: 2) {
+                    ForEach(0..<barCount, id: \.self) { index in
+                        WaveformBar(
+                            amplitude: amplitudeForIndex(index),
+                            maxAmplitude: maxAmplitude,
+                            height: geometry.size.height
+                        )
+                    }
                 }
+                Spacer()
             }
         }
-        .frame(height: 50)
     }
 
     private func amplitudeForIndex(_ index: Int) -> Float {
@@ -41,6 +44,7 @@ private struct WaveformBar: View {
         RoundedRectangle(cornerRadius: 2)
             .fill(barColor)
             .frame(width: 3, height: barHeight)
+            .frame(height: height, alignment: .center) // Center bar vertically within container
             .animation(.spring(response: 0.2, dampingFraction: 0.6), value: amplitude)
     }
 

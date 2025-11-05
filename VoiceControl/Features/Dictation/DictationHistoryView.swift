@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DictationHistoryView: View {
     @EnvironmentObject var historyManager: DictationHistoryManager
+    @State private var copiedEntryId: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,11 +105,15 @@ struct DictationHistoryView: View {
                     HistoryEntryRow(
                         entry: entry,
                         isPlaying: historyManager.currentlyPlayingId == entry.id,
+                        isCopied: copiedEntryId == entry.id,
                         onPlay: {
                             historyManager.playEntry(entry)
                         },
                         onDelete: {
                             historyManager.deleteEntry(entry)
+                        },
+                        onCopy: {
+                            copyToClipboard(entry)
                         }
                     )
                     .background(Color(NSColor.controlBackgroundColor))
@@ -155,6 +160,20 @@ struct DictationHistoryView: View {
             historyManager.clearAll()
         }
     }
+
+    private func copyToClipboard(_ entry: DictationHistoryEntry) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(entry.displayText, forType: .string)
+
+        // Show feedback
+        copiedEntryId = entry.id
+
+        // Clear feedback after 1 second
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            copiedEntryId = nil
+        }
+    }
 }
 
 // MARK: - History Entry Row
@@ -162,8 +181,12 @@ struct DictationHistoryView: View {
 struct HistoryEntryRow: View {
     let entry: DictationHistoryEntry
     let isPlaying: Bool
+    let isCopied: Bool
     let onPlay: () -> Void
     let onDelete: () -> Void
+    let onCopy: () -> Void
+
+    @State private var isHovering = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -197,6 +220,20 @@ struct HistoryEntryRow: View {
                             .foregroundColor(.purple)
                             .help("GPT formatted")
                     }
+
+                    Spacer()
+
+                    // Copied indicator
+                    if isCopied {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Copied!")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                        .transition(.opacity)
+                    }
                 }
 
                 // Transcription text
@@ -217,6 +254,19 @@ struct HistoryEntryRow: View {
             .help("Delete entry")
         }
         .padding()
+        .background(isHovering ? Color.accentColor.opacity(0.05) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onCopy()
+        }
+        .onHover { hovering in
+            isHovering = hovering
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
     }
 
     // MARK: - Formatting

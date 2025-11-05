@@ -131,42 +131,36 @@ struct OverlayView: View {
     // MARK: - Dictation Mode
 
     private func dictationView(phase: OverlayState.DictationPhase) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                dictationIcon(for: phase)
+        HStack(alignment: .center, spacing: 12) {
+            dictationIcon(for: phase)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(dictationTitle(for: phase))
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary)
-
-                    if case .error(let message) = phase {
-                        Text(message)
-                            .font(.system(size: 12))
-                            .foregroundColor(.red)
-                            .lineLimit(2)
-                    }
-                }
-
-                Spacer()
-
-                Button(action: viewModel.stop) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Waveform visualization when recording
-            if case .listening = phase, !viewModel.amplitudeSamples.isEmpty {
+            // Always show waveform container to prevent resizing
+            if case .listening = phase {
                 WaveformView(amplitudes: viewModel.amplitudeSamples)
                     .frame(height: 40)
-                    .padding(.horizontal, 4)
+            } else if case .processing = phase {
+                // Keep same space during processing
+                Color.clear
+                    .frame(height: 40)
+            } else if case .error(let message) = phase {
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundColor(.red)
+                    .lineLimit(2)
+                    .frame(height: 40, alignment: .center)
             }
+
+            Spacer()
+
+            Button(action: viewModel.stop) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
         .frame(minWidth: 250, maxWidth: 400)
     }
     
