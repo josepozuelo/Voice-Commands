@@ -38,13 +38,11 @@
 		D5A6580F2E400970009989D2 /* ModeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658072E400970009989D2 /* ModeButton.swift */; };
 		D5A658102E400970009989D2 /* OverlayViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A6580A2E400970009989D2 /* OverlayViewModel.swift */; };
 		D5A658112E400970009989D2 /* OverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A658092E400970009989D2 /* OverlayView.swift */; };
+		D5E30E802EBC00640014D24C /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = D5E30E7F2EBC00640014D24C /* FluidAudio */; };
 		DE2193EDEE8C444D8971A7B2 /* CircularBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F390453067AD43618C6AE6E2 /* CircularBuffer.swift */; };
-		ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VoiceControl.release.xcconfig"; path = "Target Support Files/Pods-VoiceControl/Pods-VoiceControl.release.xcconfig"; sourceTree = "<group>"; };
-		73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VoiceControl.debug.xcconfig"; path = "Target Support Files/Pods-VoiceControl/Pods-VoiceControl.debug.xcconfig"; sourceTree = "<group>"; };
 		A2000001000000000000001 /* VoiceControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControlApp.swift; sourceTree = "<group>"; };
 		A2000002000000000000002 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		A2000003000000000000003 /* AccessibilityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityBridge.swift; sourceTree = "<group>"; };
@@ -66,7 +64,6 @@
 		A2000020000000000000020 /* CommandClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandClassifier.swift; sourceTree = "<group>"; };
 		A2000021000000000000021 /* CommandRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRouter.swift; sourceTree = "<group>"; };
 		A3000001000000000000001 /* VoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_VoiceControl.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D23F5673E56E437DA4FF79C0 /* VoiceControl/Utils/Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControl/Utils/Logger.swift; sourceTree = "<group>"; };
 		D517DB382E0A4DF80096ACC5 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		D517DB392E0A4E070096ACC5 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -92,30 +89,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED74DD04428B61DE85F35F6F /* Pods_VoiceControl.framework in Frameworks */,
+				D5E30E802EBC00640014D24C /* FluidAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0D3B32C7C900BDCE30AE10FA /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				73A5FBF5DE4483C40941DA01 /* Pods-VoiceControl.debug.xcconfig */,
-				388747E652D26F9C293C8BE0 /* Pods-VoiceControl.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		A5000001000000000000001 = {
 			isa = PBXGroup;
 			children = (
 				A5000002000000000000002 /* VoiceControl */,
 				A5000003000000000000003 /* Products */,
 				D526D4BE2E0A01640084C5EA /* Recovered References */,
-				0D3B32C7C900BDCE30AE10FA /* Pods */,
-				C94318640C96A3A629947FF1 /* Frameworks */,
 				D517DB382E0A4DF80096ACC5 /* Release.xcconfig */,
 				D517DB392E0A4E070096ACC5 /* Debug.xcconfig */,
 			);
@@ -231,14 +217,6 @@
 			path = Dictation;
 			sourceTree = "<group>";
 		};
-		C94318640C96A3A629947FF1 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				A52526E201C86DC99BEB0F4E /* Pods_VoiceControl.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		D526D4BE2E0A01640084C5EA /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
@@ -266,11 +244,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A7000001000000000000001 /* Build configuration list for PBXNativeTarget "VoiceControl" */;
 			buildPhases = (
-				DA16A76EDCEE3E8A860B64B7 /* [CP] Check Pods Manifest.lock */,
 				A8000001000000000000001 /* Sources */,
 				A4000001000000000000001 /* Frameworks */,
 				A9000001000000000000001 /* Resources */,
-				B00A55366423D76D246A2929 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -305,6 +281,9 @@
 				Base,
 			);
 			mainGroup = A5000001000000000000001;
+			packageReferences = (
+				D5E30E7E2EBC00640014D24C /* XCRemoteSwiftPackageReference "FluidAudio" */,
+			);
 			productRefGroup = A5000003000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -324,52 +303,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		B00A55366423D76D246A2929 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-VoiceControl/Pods-VoiceControl-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		DA16A76EDCEE3E8A860B64B7 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-VoiceControl-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A8000001000000000000001 /* Sources */ = {
@@ -556,7 +489,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourteam.VoiceControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -588,7 +521,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourteam.VoiceControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -619,6 +552,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D5E30E7E2EBC00640014D24C /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D5E30E7F2EBC00640014D24C /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E30E7E2EBC00640014D24C /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B0000001000000000000001 /* Project object */;
 }

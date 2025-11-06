@@ -72,22 +72,33 @@ class AudioEngine: NSObject, ObservableObject {
     }
     
     func startRecording() {
-        guard !isRecording else { return }
-        
+        guard !isRecording else {
+            print("🎤 AUDIO ENGINE: Already recording, skipping start")
+            return
+        }
+
         print("🎙️ AUDIO ENGINE: Starting recording (simple mode)")
-        
+
         audioBuffer.removeAll()
         isContinuousMode = false
-        
+
         audioEngine = AVAudioEngine()
-        guard let audioEngine = audioEngine else { return }
-        
+        guard let audioEngine = audioEngine else {
+            print("❌ AUDIO ENGINE: Failed to create audio engine")
+            return
+        }
+
         inputNode = audioEngine.inputNode
-        guard let inputNode = inputNode else { return }
-        
+        guard let inputNode = inputNode else {
+            print("❌ AUDIO ENGINE: Failed to get input node")
+            return
+        }
+
         // Use the input node's native format to avoid format mismatch
         let inputFormat = inputNode.outputFormat(forBus: 0)
-        
+
+        print("🎤 AUDIO ENGINE: Input format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
+
         inputNode.installTap(
             onBus: 0,
             bufferSize: bufferSize,
@@ -95,38 +106,47 @@ class AudioEngine: NSObject, ObservableObject {
         ) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
-        
+
+        // Prepare the engine before starting
+        audioEngine.prepare()
+
         do {
             try audioEngine.start()
+            print("🎤 AUDIO ENGINE: Engine started successfully")
             DispatchQueue.main.async {
                 self.isRecording = true
             }
         } catch {
-            print("Failed to start audio engine: \(error)")
+            print("❌ AUDIO ENGINE: Failed to start audio engine: \(error)")
         }
     }
     
     func startRecording(enableSilenceDetection: Bool, maxDuration: TimeInterval? = nil) async throws {
-        guard !isRecording else { return }
-        
+        guard !isRecording else {
+            print("🎤 AUDIO ENGINE: Already recording, skipping start")
+            return
+        }
+
         print("🎙️ AUDIO ENGINE: Starting recording (silence detection: \(enableSilenceDetection))")
-        
+
         audioBuffer.removeAll()
         isContinuousMode = enableSilenceDetection
-        
+
         audioEngine = AVAudioEngine()
         guard let audioEngine = audioEngine else {
             throw AudioEngineError.failedToInitialize
         }
-        
+
         inputNode = audioEngine.inputNode
         guard let inputNode = inputNode else {
             throw AudioEngineError.failedToInitialize
         }
-        
+
         // Use the input node's native format to avoid format mismatch
         let inputFormat = inputNode.outputFormat(forBus: 0)
-        
+
+        print("🎤 AUDIO ENGINE: Input format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
+
         inputNode.installTap(
             onBus: 0,
             bufferSize: bufferSize,
@@ -134,13 +154,17 @@ class AudioEngine: NSObject, ObservableObject {
         ) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
-        
+
+        // Prepare the engine before starting
+        audioEngine.prepare()
+
         do {
             try audioEngine.start()
+            print("🎤 AUDIO ENGINE: Engine started successfully")
             await MainActor.run {
                 self.isRecording = true
             }
-            
+
             // Handle max duration if specified
             if let maxDuration = maxDuration {
                 Task {
@@ -149,33 +173,49 @@ class AudioEngine: NSObject, ObservableObject {
                 }
             }
         } catch {
+            print("❌ AUDIO ENGINE: Failed to start: \(error)")
             throw AudioEngineError.failedToStart(error)
         }
     }
     
     func startContinuousRecording() {
-        guard !isRecording else { return }
-        
+        guard !isRecording else {
+            print("🎤 AUDIO ENGINE: Already recording, skipping start")
+            return
+        }
+
+        print("🎤 AUDIO ENGINE: Starting continuous recording")
+
         // Clear all buffers before starting
         audioBuffer.removeAll()
         isContinuousMode = true
-        
+
         // Reset debug counters
         processedBufferCount = 0
         totalProcessedSamples = 0
-        
+
         // Reset VAD chunker to ensure clean state
         vadChunker.reset()
-        
+
         audioEngine = AVAudioEngine()
-        guard let audioEngine = audioEngine else { return }
-        
+        guard let audioEngine = audioEngine else {
+            print("❌ AUDIO ENGINE: Failed to create audio engine")
+            return
+        }
+
         inputNode = audioEngine.inputNode
-        guard let inputNode = inputNode else { return }
-        
+        guard let inputNode = inputNode else {
+            print("❌ AUDIO ENGINE: Failed to get input node")
+            return
+        }
+
         // Use the input node's native format to avoid format mismatch
         let inputFormat = inputNode.outputFormat(forBus: 0)
-        
+
+        print("🎤 AUDIO ENGINE: Input format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
+        print("🎤 AUDIO ENGINE: Installing tap with buffer size: \(bufferSize)")
+
+        // IMPORTANT: Install tap BEFORE starting the engine
         inputNode.installTap(
             onBus: 0,
             bufferSize: bufferSize,
@@ -183,17 +223,23 @@ class AudioEngine: NSObject, ObservableObject {
         ) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
         }
-        
+
+        // Prepare the engine before starting
+        audioEngine.prepare()
+        print("🎤 AUDIO ENGINE: Engine prepared")
+
         do {
             try audioEngine.start()
+            print("🎤 AUDIO ENGINE: Engine started successfully")
             DispatchQueue.main.async {
                 self.isRecording = true
+                print("🎤 AUDIO ENGINE: isRecording set to true")
             }
         } catch {
-            print("Failed to start audio engine: \(error)")
+            print("❌ AUDIO ENGINE: Failed to start audio engine: \(error)")
         }
     }
-    
+
     func stopRecording() {
         guard isRecording else { return }
         
@@ -238,17 +284,20 @@ class AudioEngine: NSObject, ObservableObject {
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData else { return }
-        
+        guard let channelData = buffer.floatChannelData else {
+            print("⚠️ AUDIO ENGINE: No channel data in buffer")
+            return
+        }
+
         let channelDataValue = channelData.pointee
         let channelDataValueArray = stride(
             from: 0,
             to: Int(buffer.frameLength),
             by: buffer.stride
         ).map { channelDataValue[$0] }
-        
+
         let rms = sqrt(channelDataValueArray.map { $0 * $0 }.reduce(0, +) / Float(buffer.frameLength))
-        
+
         DispatchQueue.main.async {
             self.audioLevel = rms
         }
@@ -261,16 +310,18 @@ class AudioEngine: NSObject, ObservableObject {
             let floatArray = convertedData.withUnsafeBytes { bytes in
                 Array(bytes.bindMemory(to: Float.self))
             }
-            
+
             // Update debug counters
             processedBufferCount += 1
             totalProcessedSamples += floatArray.count
-            
+
             // Log every ~1 second of audio
             if processedBufferCount % 50 == 0 { // ~50 buffers = ~1 second at typical buffer sizes
                 let totalSeconds = Float(totalProcessedSamples) / 16000.0
+                print("🎤 AUDIO ENGINE: Processed \(processedBufferCount) buffers, \(String(format: "%.1f", totalSeconds))s total audio")
             }
-            
+
+            print("🎤 AUDIO ENGINE: Sending \(floatArray.count) samples to VAD chunker (continuous mode)")
             // Process with VAD chunker
             vadChunker.processAudioBuffer(floatArray)
         } else {
