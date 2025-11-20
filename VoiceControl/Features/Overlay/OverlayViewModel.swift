@@ -33,8 +33,8 @@ final class OverlayViewModel: ObservableObject {
     }
     
     func startCommand() {
-        transition(to: .command(.listening))
-        commandManager.startVoiceCommand()
+        transition(to: .command(.continuousListening))
+        commandManager.startContinuousMode()
     }
     
     func startEdit() {
@@ -57,7 +57,7 @@ final class OverlayViewModel: ObservableObject {
     func stop() {
         switch state {
         case .command:
-            commandManager.stopVoiceCommand()
+            commandManager.stopContinuousMode()
         case .edit:
             editManager.cancelEditing()
         case .dictation:

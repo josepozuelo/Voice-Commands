@@ -27,8 +27,6 @@ class AudioEngine: NSObject, ObservableObject {
     private var inputNode: AVAudioInputNode?
     private var audioBuffer = Data()
     
-    var audioDataPublisher = PassthroughSubject<Data, Never>()
-    var recordingCompletePublisher = PassthroughSubject<Data, Never>()
     var audioChunkPublisher = PassthroughSubject<Data, Never>()  // For continuous mode chunks
     
     private let bufferSize = AVAudioFrameCount(Config.audioBufferSize)
@@ -69,56 +67,6 @@ class AudioEngine: NSObject, ObservableObject {
             print("Failed to setup audio session: \(error)")
         }
         #endif
-    }
-    
-    func startRecording() {
-        guard !isRecording else {
-            print("🎤 AUDIO ENGINE: Already recording, skipping start")
-            return
-        }
-
-        print("🎙️ AUDIO ENGINE: Starting recording (simple mode)")
-
-        audioBuffer.removeAll()
-        isContinuousMode = false
-
-        audioEngine = AVAudioEngine()
-        guard let audioEngine = audioEngine else {
-            print("❌ AUDIO ENGINE: Failed to create audio engine")
-            return
-        }
-
-        inputNode = audioEngine.inputNode
-        guard let inputNode = inputNode else {
-            print("❌ AUDIO ENGINE: Failed to get input node")
-            return
-        }
-
-        // Use the input node's native format to avoid format mismatch
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        print("🎤 AUDIO ENGINE: Input format - sample rate: \(inputFormat.sampleRate), channels: \(inputFormat.channelCount)")
-
-        inputNode.installTap(
-            onBus: 0,
-            bufferSize: bufferSize,
-            format: inputFormat
-        ) { [weak self] buffer, _ in
-            self?.processAudioBuffer(buffer)
-        }
-
-        // Prepare the engine before starting
-        audioEngine.prepare()
-
-        do {
-            try audioEngine.start()
-            print("🎤 AUDIO ENGINE: Engine started successfully")
-            DispatchQueue.main.async {
-                self.isRecording = true
-            }
-        } catch {
-            print("❌ AUDIO ENGINE: Failed to start audio engine: \(error)")
-        }
     }
     
     func startRecording(enableSilenceDetection: Bool, maxDuration: TimeInterval? = nil) async throws {
@@ -252,20 +200,13 @@ class AudioEngine: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.isRecording = false
         }
-        
-        // Send any recorded audio if not in continuous mode
-        if !isContinuousMode && !audioBuffer.isEmpty {
-            let seconds = Float(audioBuffer.count) / (16000.0 * 4.0)
-            print("🎙️ AUDIO ENGINE: Recording complete, sending \(String(format: "%.1f", seconds))s of audio")
-            recordingCompletePublisher.send(audioBuffer)
-        }
-        
+
         // Don't clear the buffer immediately - let getRecordedAudio() retrieve it first
         // The buffer will be cleared when starting a new recording
-        
+
         // Reset continuous mode flag after processing
         isContinuousMode = false
-        
+
         // Reset VAD chunker
         vadChunker.reset()
     }
@@ -325,9 +266,8 @@ class AudioEngine: NSObject, ObservableObject {
             // Process with VAD chunker
             vadChunker.processAudioBuffer(floatArray)
         } else {
-            // Normal recording mode
+            // For non-continuous mode (Edit/Dictation), just buffer the audio
             audioBuffer.append(convertedData)
-            audioDataPublisher.send(convertedData)
         }
     }
     

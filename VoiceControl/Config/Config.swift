@@ -67,9 +67,8 @@ struct Config {
     
     static let silenceThreshold: TimeInterval = 1.0
     static let fuzzyMatchThreshold: Double = 0.85
-    
-    // Continuous Mode Configuration
-    static let continuousMode = true  // Toggle for continuous mode
+
+    // Continuous Mode Configuration (now the only mode for commands)
     static let minAudioChunkDuration: TimeInterval = 0.5  // Minimum audio chunk size
     static let maxAudioChunkDuration: TimeInterval = 10.0  // Maximum before forced processing
     

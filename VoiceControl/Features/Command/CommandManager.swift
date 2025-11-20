@@ -58,12 +58,6 @@ class CommandManager: ObservableObject {
     }
     
     private func setupBindings() {
-        audioEngine.recordingCompletePublisher
-            .sink { [weak self] audioData in
-                self?.processAudioData(audioData)
-            }
-            .store(in: &cancellables)
-        
         // Subscribe to audio chunks for continuous mode
         audioEngine.audioChunkPublisher
             .sink { [weak self] audioChunk in
@@ -134,28 +128,15 @@ class CommandManager: ObservableObject {
     func toggleCommandMode() {
         print("🎛️  CommandManager: toggleCommandMode called - isListening: \(isListening)")
         if isListening {
-            print("   Stopping voice command...")
-            stopVoiceCommand()
+            print("   Stopping continuous mode...")
+            stopContinuousMode()
         } else {
-            print("   Starting voice command...")
-            if Config.continuousMode {
-                startContinuousMode()
-            } else {
-                startVoiceCommand()
-            }
+            print("   Starting continuous mode...")
+            startContinuousMode()
         }
     }
-    
+
     // MARK: - Public Methods for Manual Control
-    
-    func startVoiceCommand() {
-        startListening()
-    }
-    
-    func stopVoiceCommand() {
-        stopListening()
-        hudState = .idle
-    }
     
     func startContinuousMode() {
         guard !isListening else { return }
@@ -183,13 +164,9 @@ class CommandManager: ObservableObject {
     func cancelCurrentOperation() {
         // Stop recording if active
         if isListening {
-            if isContinuousMode {
-                stopContinuousMode()
-            } else {
-                stopVoiceCommand()
-            }
+            stopContinuousMode()
         }
-        
+
         // Reset to idle state
         resetToIdle()
     }
@@ -201,47 +178,17 @@ class CommandManager: ObservableObject {
             }
             classifyAndExecute(lastTranscription)
         } else {
-            startVoiceCommand()
+            startContinuousMode()
         }
-    }
-    
-    private func startListening() {
-        guard !isListening else { 
-            return 
-        }
-        
-        // Ensure clean state before starting
-        if hudState != .idle {
-            resetToIdle()
-        }
-        
-        DispatchQueue.main.async {
-            self.isListening = true
-            self.hudState = .listening
-            self.recognizedText = ""
-            self.currentCommand = nil
-            self.error = nil
-        }
-        
-        audioEngine.startRecording()
     }
     
     private func stopListening() {
         guard isListening else { return }
-        
+
         DispatchQueue.main.async {
             self.isListening = false
         }
         audioEngine.stopRecording()
-    }
-    
-    private func processAudioData(_ audioData: Data) {
-        let seconds = Float(audioData.count) / (16000.0 * 4.0)
-        print("🎵 COMMAND MANAGER: Received audio data: \(String(format: "%.1f", seconds))s")
-        DispatchQueue.main.async {
-            self.hudState = .processing
-        }
-        whisperService.startTranscription(audioData: audioData)
     }
     
     private func processAudioChunk(_ audioChunk: Data) {
